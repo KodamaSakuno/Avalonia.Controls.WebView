@@ -14,11 +14,16 @@ public partial class MainWindow : Window
     {
         Console.WriteLine(e.Request);
 
-        Console.WriteLine(await ((NativeWebView)sender!).InvokeScript("document.location.href"));
+        await ((NativeWebView)sender!).InvokeScript(""" invokeCSharpAction("{'key': 10}") """);
     }
 
     private void NativeWebView_OnNavigationStarted(object? sender, WebViewNavigationStartingEventArgs e)
     {
         Console.WriteLine(e.Request);
+    }
+
+    private void NativeWebView_OnWebMessageReceived(object? sender, WebMessageReceivedEventArgs e)
+    {
+        Console.WriteLine(e.Body);
     }
 }

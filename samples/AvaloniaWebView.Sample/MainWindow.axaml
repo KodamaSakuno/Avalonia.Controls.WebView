@@ -12,7 +12,8 @@
     <TabItem Header="Google">
       <webview:NativeWebView Source="https://google.com"
                              NavigationCompleted="NativeWebView_OnNavigationCompleted"
-                             NavigationStarted="NativeWebView_OnNavigationStarted"/>
+                             NavigationStarted="NativeWebView_OnNavigationStarted"
+                             WebMessageReceived="NativeWebView_OnWebMessageReceived"/>
     </TabItem>
     <TabItem Header="Reddit">
       <webview:NativeWebView Source="https://reddit.com" />

@@ -4,6 +4,11 @@ using Avalonia.Platform;
 
 namespace AvaloniaWebView;
 
+public class WebMessageReceivedEventArgs : EventArgs
+{
+    public string? Body { get; init; }
+}
+
 public class WebViewNavigationEventArgs : EventArgs
 {
     public Uri? Request { get; init; }
@@ -33,7 +38,12 @@ internal interface IWebView
     /// NavigationStarting dispatches before a new navigate starts for the top level document.
     /// </summary>
     event EventHandler<WebViewNavigationStartingEventArgs>? NavigationStarted;
-    
+
+    /// <summary>
+    /// WebMessageReceived dispatches after web content sends a message to the app host via chrome.webview.postMessage.
+    /// </summary>
+    event EventHandler<WebMessageReceivedEventArgs> WebMessageReceived; 
+
     /// <summary>
     /// Returns true if the webview can navigate to a previous page in the navigation history via the <see cref="GoBack"/> method.
     /// If the underlying native control is not yet initialized or navigation is not supported, this property is false.

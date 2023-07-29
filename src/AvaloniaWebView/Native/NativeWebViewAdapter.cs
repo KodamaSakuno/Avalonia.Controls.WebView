@@ -37,6 +37,7 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
 
     public event EventHandler<WebViewNavigationCompletedEventArgs>? NavigationCompleted;
     public event EventHandler<WebViewNavigationStartingEventArgs>? NavigationStarted;
+    public event EventHandler<WebMessageReceivedEventArgs>? WebMessageReceived;
     public bool CanGoBack => _nativeWebView.CanGoBack == 1;
     public bool CanGoForward => _nativeWebView.CanGoForward == 1;
 
@@ -112,8 +113,10 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
         }
     }
     
-    private void OnNavigationCompleted(string url, bool success)
+    private async void OnNavigationCompleted(string url, bool success)
     {
+        await InvokeScript("function invokeCSharpAction(data){window.webkit.messageHandlers.postWebViewMessage.postMessage(data);}");
+
         NavigationCompleted?.Invoke(this, new WebViewNavigationCompletedEventArgs
         {
             IsSuccess = success,
@@ -126,6 +129,11 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
         var args = new WebViewNavigationStartingEventArgs { Request = new Uri(url) };
         NavigationStarted?.Invoke(this, args);
         return args.Cancel;
+    }
+
+    private void OnWebMessageReceived(string body)
+    {
+        WebMessageReceived?.Invoke(this, new WebMessageReceivedEventArgs { Body = body });
     }
     
     private void CurrentDomainOnProcessExit(object? sender, EventArgs e)
@@ -147,6 +155,14 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
             using (ppv)
             {
                 _adapter.OnScriptResult(id, isError == 1, ppv.String);
+            }
+        }
+
+        public void OnWebMessageReceived(IAvnString body)
+        {
+            using (body)
+            {
+                _adapter.OnWebMessageReceived(body.String);
             }
         }
 

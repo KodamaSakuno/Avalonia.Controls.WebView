@@ -35,6 +35,7 @@ interface INativeWebView : IUnknown
 interface INativeWebViewHandlers : IUnknown
 {
     HRESULT OnScriptResult(int id, bool isError, IAvnString*result);
+    HRESULT OnWebMessageReceived(IAvnString* body);
     HRESULT OnNavigationCompleted(IAvnString* url, bool success);
     HRESULT OnNavigationStarted(IAvnString* url, bool* cancel);
 }

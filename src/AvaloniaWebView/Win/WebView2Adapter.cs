@@ -41,6 +41,7 @@ internal class WebView2Adapter : IWebViewAdapter
 
     public bool IsInitialized { get; private set; }
 
+    public event EventHandler<WebMessageReceivedEventArgs>? WebMessageReceived;
     public bool CanGoBack => _controller?.CoreWebView2?.CanGoBack ?? false;
 
     public bool CanGoForward => _controller?.CoreWebView2?.CanGoForward ?? false;
@@ -122,8 +123,10 @@ internal class WebView2Adapter : IWebViewAdapter
     private Action AddHandlers(CoreWebView2 webView)
     {
         webView.NavigationStarting += WebViewOnNavigationStarting;
-        void WebViewOnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
+        async void WebViewOnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
         {
+            await InvokeScript("function invokeCSharpAction(data){window.chrome.webview.postMessage(data);}");
+
             var args = new WebViewNavigationStartingEventArgs { Request = new Uri(e.Uri) };
             NavigationStarted?.Invoke(this, args);
             if (args.Cancel)
@@ -142,10 +145,17 @@ internal class WebView2Adapter : IWebViewAdapter
             });
         }
         
+        webView.WebMessageReceived += WebViewOnWebMessageReceived;
+        void WebViewOnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+        {
+            WebMessageReceived?.Invoke(this, new WebMessageReceivedEventArgs { Body = e.WebMessageAsJson });
+        }
+
         return () =>
         {
             webView.NavigationStarting -= WebViewOnNavigationStarting;
             webView.NavigationCompleted -= WebViewOnNavigationCompleted;
+            webView.WebMessageReceived -= WebViewOnWebMessageReceived;
         };
     }
 }

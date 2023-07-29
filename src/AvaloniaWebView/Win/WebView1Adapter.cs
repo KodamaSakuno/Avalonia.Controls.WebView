@@ -51,6 +51,7 @@ internal sealed class WebView1Adapter : IWebViewAdapter
     
     public bool IsInitialized { get; private set; }
 
+    public event EventHandler<WebMessageReceivedEventArgs>? WebMessageReceived;
     public bool CanGoBack => _webViewControl?.CanGoBack ?? false;
 
     public bool CanGoForward => _webViewControl?.CanGoForward ?? false;
@@ -85,9 +86,9 @@ internal sealed class WebView1Adapter : IWebViewAdapter
         return true;
     }
 
-    public Task<string?> InvokeScript(string scriptName)
+    public Task<string?> InvokeScript(string script)
     {
-        return _webViewControl?.InvokeScriptAsync(scriptName, null).AsTask() ?? Task.FromResult<string?>(null);
+        return _webViewControl?.InvokeScriptAsync("eval", new[] { script }).AsTask() ?? Task.FromResult<string?>(null);
     }
 
     public void Navigate(Uri url)
@@ -146,19 +147,28 @@ internal sealed class WebView1Adapter : IWebViewAdapter
         }
 
         webView.NavigationCompleted += WebViewOnNavigationCompleted;
-        void WebViewOnNavigationCompleted(object? sender, WebViewControlNavigationCompletedEventArgs e)
+        async void WebViewOnNavigationCompleted(object? sender, WebViewControlNavigationCompletedEventArgs e)
         {
+            await InvokeScript("function invokeCSharpAction(data){window.external.notify(data);}");
+            
             NavigationCompleted?.Invoke(this, new WebViewNavigationCompletedEventArgs
             {
                 Request = ((WebViewControl)sender!).Source,
                 IsSuccess = e.IsSuccess
             });
         }
+        
+        webView.ScriptNotify += WebViewOnScriptNotify;
+        void WebViewOnScriptNotify(IWebViewControl sender, WebViewControlScriptNotifyEventArgs args)
+        {
+            WebMessageReceived?.Invoke(this, new WebMessageReceivedEventArgs { Body = args.Value });
+        }
 
         return () =>
         {
             webView.NavigationStarting -= WebViewOnNavigationStarting;
             webView.NavigationCompleted -= WebViewOnNavigationCompleted;
+            webView.ScriptNotify -= WebViewOnScriptNotify;
         };
     }
 

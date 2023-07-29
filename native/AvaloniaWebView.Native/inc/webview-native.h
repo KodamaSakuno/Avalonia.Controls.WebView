@@ -42,6 +42,9 @@ COMINTERFACE(INativeWebViewHandlers, e5aca67b, 02b7, 4129, aa, 79, d6, e4, 17, 2
         bool isError, 
         IAvnString* result
     ) = 0;
+    virtual HRESULT OnWebMessageReceived (
+        IAvnString* body
+    ) = 0;
     virtual HRESULT OnNavigationCompleted (
         IAvnString* url, 
         bool success

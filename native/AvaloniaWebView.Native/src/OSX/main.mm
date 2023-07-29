@@ -3,7 +3,7 @@
 #include "common.h"
 #include "AvnString.h"
 
-@interface WebViewHandlers : NSObject<WKNavigationDelegate>
+@interface WebViewHandlers : NSObject<WKNavigationDelegate, WKScriptMessageHandler>
 -(id)initWithHandlers: (INativeWebViewHandlers*) arg;
 -(void)releaseHandlers;
 -(void)onScriptResult:(int)index withResult:(id)result withError:(NSError*)error;
@@ -21,6 +21,14 @@ public:
     WebViewNative(WebViewHandlers* handlers)
     {
         WKWebViewConfiguration* config = [[WKWebViewConfiguration alloc] init];
+        if (@available(macOS 11, *)) {
+            [[config defaultWebpagePreferences] setAllowsContentJavaScript: true];
+        }
+        else {
+            [[config preferences] setJavaScriptEnabled: true];
+        }
+        [config.userContentController addScriptMessageHandler:handlers name:@"postWebViewMessage"];
+
         CGRect frame = {};
         _webView = [[WKWebView alloc] initWithFrame:frame configuration:config];
         _webView.navigationDelegate = handlers;
@@ -215,6 +223,16 @@ public:
         else
         {
             handler->OnScriptResult(index, false, CreateAvnString((NSString *)result));
+        }
+    }
+}
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message
+{
+    @autoreleasepool
+    {
+        if ([message.name isEqualToString:@"postWebViewMessage"])
+        {
+            handler->OnWebMessageReceived(CreateAvnString((NSString *)message.body));
         }
     }
 }

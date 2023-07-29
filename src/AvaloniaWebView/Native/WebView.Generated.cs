@@ -49,6 +49,7 @@ namespace AvaloniaWebView.Interop
     internal unsafe partial interface INativeWebViewHandlers : global::MicroCom.Runtime.IUnknown
     {
         void OnScriptResult(int id, int isError, IAvnString result);
+        void OnWebMessageReceived(IAvnString body);
         void OnNavigationCompleted(IAvnString url, int success);
         void OnNavigationStarted(IAvnString url, int* cancel);
     }
@@ -637,10 +638,18 @@ namespace AvaloniaWebView.Interop.Impl
                 throw new System.Runtime.InteropServices.COMException("OnScriptResult failed", __result);
         }
 
+        public void OnWebMessageReceived(IAvnString body)
+        {
+            int __result;
+            __result = (int)((delegate* unmanaged[Stdcall]<void*, void*, int>)(*PPV)[base.VTableSize + 1])(PPV, global::MicroCom.Runtime.MicroComRuntime.GetNativePointer(body));
+            if (__result != 0)
+                throw new System.Runtime.InteropServices.COMException("OnWebMessageReceived failed", __result);
+        }
+
         public void OnNavigationCompleted(IAvnString url, int success)
         {
             int __result;
-            __result = (int)((delegate* unmanaged[Stdcall]<void*, void*, int, int>)(*PPV)[base.VTableSize + 1])(PPV, global::MicroCom.Runtime.MicroComRuntime.GetNativePointer(url), success);
+            __result = (int)((delegate* unmanaged[Stdcall]<void*, void*, int, int>)(*PPV)[base.VTableSize + 2])(PPV, global::MicroCom.Runtime.MicroComRuntime.GetNativePointer(url), success);
             if (__result != 0)
                 throw new System.Runtime.InteropServices.COMException("OnNavigationCompleted failed", __result);
         }
@@ -648,7 +657,7 @@ namespace AvaloniaWebView.Interop.Impl
         public void OnNavigationStarted(IAvnString url, int* cancel)
         {
             int __result;
-            __result = (int)((delegate* unmanaged[Stdcall]<void*, void*, void*, int>)(*PPV)[base.VTableSize + 2])(PPV, global::MicroCom.Runtime.MicroComRuntime.GetNativePointer(url), cancel);
+            __result = (int)((delegate* unmanaged[Stdcall]<void*, void*, void*, int>)(*PPV)[base.VTableSize + 3])(PPV, global::MicroCom.Runtime.MicroComRuntime.GetNativePointer(url), cancel);
             if (__result != 0)
                 throw new System.Runtime.InteropServices.COMException("OnNavigationStarted failed", __result);
         }
@@ -663,7 +672,7 @@ namespace AvaloniaWebView.Interop.Impl
         {
         }
 
-        protected override int VTableSize => base.VTableSize + 3;
+        protected override int VTableSize => base.VTableSize + 4;
     }
 
     unsafe class __MicroComINativeWebViewHandlersVTable : global::MicroCom.Runtime.MicroComVtblBase
@@ -681,6 +690,34 @@ namespace AvaloniaWebView.Interop.Impl
                 {
                     __target = (INativeWebViewHandlers)global::MicroCom.Runtime.MicroComRuntime.GetObjectFromCcw(new IntPtr(@this));
                     __target.OnScriptResult(id, isError, global::MicroCom.Runtime.MicroComRuntime.CreateProxyOrNullFor<IAvnString>(result, false));
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException __com_exception__)
+            {
+                return __com_exception__.ErrorCode;
+            }
+            catch (System.Exception __exception__)
+            {
+                global::MicroCom.Runtime.MicroComRuntime.UnhandledException(__target, __exception__);
+                return unchecked((int)0x80004005u);
+            }
+
+            return 0;
+        }
+
+        [System.Runtime.InteropServices.UnmanagedFunctionPointer(System.Runtime.InteropServices.CallingConvention.StdCall)]
+        delegate int OnWebMessageReceivedDelegate(void* @this, void* body);
+#if NET5_0_OR_GREATER
+        [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })] 
+#endif
+        static int OnWebMessageReceived(void* @this, void* body)
+        {
+            INativeWebViewHandlers __target = null;
+            try
+            {
+                {
+                    __target = (INativeWebViewHandlers)global::MicroCom.Runtime.MicroComRuntime.GetObjectFromCcw(new IntPtr(@this));
+                    __target.OnWebMessageReceived(global::MicroCom.Runtime.MicroComRuntime.CreateProxyOrNullFor<IAvnString>(body, false));
                 }
             }
             catch (System.Runtime.InteropServices.COMException __com_exception__)
@@ -758,6 +795,11 @@ namespace AvaloniaWebView.Interop.Impl
             base.AddMethod((delegate* unmanaged[Stdcall]<void*, int, int, void*, int>)&OnScriptResult); 
 #else
             base.AddMethod((OnScriptResultDelegate)OnScriptResult); 
+#endif
+#if NET5_0_OR_GREATER
+            base.AddMethod((delegate* unmanaged[Stdcall]<void*, void*, int>)&OnWebMessageReceived); 
+#else
+            base.AddMethod((OnWebMessageReceivedDelegate)OnWebMessageReceived); 
 #endif
 #if NET5_0_OR_GREATER
             base.AddMethod((delegate* unmanaged[Stdcall]<void*, void*, int, int>)&OnNavigationCompleted); 

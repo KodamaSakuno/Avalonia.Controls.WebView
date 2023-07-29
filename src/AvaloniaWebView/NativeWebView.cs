@@ -16,7 +16,8 @@ public class NativeWebView : NativeControlHost, IWebView
     public event EventHandler<WebViewNavigationCompletedEventArgs>? NavigationCompleted;
 
     public event EventHandler<WebViewNavigationStartingEventArgs>? NavigationStarted;
-    
+    public event EventHandler<WebMessageReceivedEventArgs>? WebMessageReceived;
+
     public static readonly StyledProperty<Uri?> SourceProperty = AvaloniaProperty.Register<NativeWebView, Uri?>(nameof(Source));
 
     public Uri? Source
@@ -119,7 +120,13 @@ public class NativeWebView : NativeControlHost, IWebView
         {
             _webViewAdapter.NavigationStarted += WebViewAdapterOnNavigationStarted;
             _webViewAdapter.NavigationCompleted += WebViewAdapterOnNavigationCompleted;
+            _webViewAdapter.WebMessageReceived += WebViewAdapterOnWebMessageReceived;
         }
+    }
+
+    private void WebViewAdapterOnWebMessageReceived(object? sender, WebMessageReceivedEventArgs e)
+    {
+        WebMessageReceived?.Invoke(this, e);
     }
 
     private void WebViewAdapterOnNavigationStarted(object? sender, WebViewNavigationStartingEventArgs e)
@@ -176,6 +183,7 @@ public class NativeWebView : NativeControlHost, IWebView
             _webViewAdapter = null;
             adapter.NavigationStarted -= WebViewAdapterOnNavigationStarted;
             adapter.NavigationCompleted -= WebViewAdapterOnNavigationCompleted;
+            adapter.WebMessageReceived -= WebViewAdapterOnWebMessageReceived;
             adapter.Initialized -= WebViewAdapterOnInitialized;
             adapter.Dispose();
         }
