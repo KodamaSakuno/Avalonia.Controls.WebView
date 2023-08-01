@@ -25,7 +25,15 @@ tinymce.init({
     selector: '#mytextarea',
     paste_data_images: true,
     skin: false,
+    menubar: false,
+    statusbar: false,
+    plugins: 'autoresize',
+    toolbar: 'bold italic underline bullist numlist fontselect fontsizeselect',
     setup: function(ed){
+         ed.on('Init', function(e) {
+            ed.execCommand("fontName", false, "Arial");
+            ed.execCommand("fontSize", false, "12");
+         });
          ed.on('Paste Change input Undo Redo', function(e){
             var obj = {
                 'type': 'textChanged',
