@@ -29,6 +29,7 @@ interface INativeWebView : IUnknown
     bool Refresh();
     bool Stop();
     HRESULT InvokeScript(IAvnString* script, int id);
+    HRESULT ReleaseUnmanaged();
 }
 
 [uuid(e5aca67b-02b7-4129-aa79-d6e417210bba)]

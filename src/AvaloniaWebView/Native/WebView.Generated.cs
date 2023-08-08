@@ -44,6 +44,7 @@ namespace AvaloniaWebView.Interop
         int Refresh();
         int Stop();
         void InvokeScript(IAvnString script, int id);
+        void ReleaseUnmanaged();
     }
 
     internal unsafe partial interface INativeWebViewHandlers : global::MicroCom.Runtime.IUnknown
@@ -260,6 +261,14 @@ namespace AvaloniaWebView.Interop.Impl
                 throw new System.Runtime.InteropServices.COMException("InvokeScript failed", __result);
         }
 
+        public void ReleaseUnmanaged()
+        {
+            int __result;
+            __result = (int)((delegate* unmanaged[Stdcall]<void*, int>)(*PPV)[base.VTableSize + 11])(PPV);
+            if (__result != 0)
+                throw new System.Runtime.InteropServices.COMException("ReleaseUnmanaged failed", __result);
+        }
+
         [System.Runtime.CompilerServices.ModuleInitializer()]
         internal static void __MicroComModuleInit()
         {
@@ -270,7 +279,7 @@ namespace AvaloniaWebView.Interop.Impl
         {
         }
 
-        protected override int VTableSize => base.VTableSize + 11;
+        protected override int VTableSize => base.VTableSize + 12;
     }
 
     unsafe class __MicroComINativeWebViewVTable : global::MicroCom.Runtime.MicroComVtblBase
@@ -565,6 +574,34 @@ namespace AvaloniaWebView.Interop.Impl
             return 0;
         }
 
+        [System.Runtime.InteropServices.UnmanagedFunctionPointer(System.Runtime.InteropServices.CallingConvention.StdCall)]
+        delegate int ReleaseUnmanagedDelegate(void* @this);
+#if NET5_0_OR_GREATER
+        [System.Runtime.InteropServices.UnmanagedCallersOnly(CallConvs = new[] { typeof(System.Runtime.CompilerServices.CallConvStdcall) })] 
+#endif
+        static int ReleaseUnmanaged(void* @this)
+        {
+            INativeWebView __target = null;
+            try
+            {
+                {
+                    __target = (INativeWebView)global::MicroCom.Runtime.MicroComRuntime.GetObjectFromCcw(new IntPtr(@this));
+                    __target.ReleaseUnmanaged();
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException __com_exception__)
+            {
+                return __com_exception__.ErrorCode;
+            }
+            catch (System.Exception __exception__)
+            {
+                global::MicroCom.Runtime.MicroComRuntime.UnhandledException(__target, __exception__);
+                return unchecked((int)0x80004005u);
+            }
+
+            return 0;
+        }
+
         protected __MicroComINativeWebViewVTable()
         {
 #if NET5_0_OR_GREATER
@@ -621,6 +658,11 @@ namespace AvaloniaWebView.Interop.Impl
             base.AddMethod((delegate* unmanaged[Stdcall]<void*, void*, int, int>)&InvokeScript); 
 #else
             base.AddMethod((InvokeScriptDelegate)InvokeScript); 
+#endif
+#if NET5_0_OR_GREATER
+            base.AddMethod((delegate* unmanaged[Stdcall]<void*, int>)&ReleaseUnmanaged); 
+#else
+            base.AddMethod((ReleaseUnmanagedDelegate)ReleaseUnmanaged); 
 #endif
         }
 

@@ -9,6 +9,8 @@
 -(void)onScriptResult:(int)index withResult:(id)result withError:(NSError*)error;
 @end
 
+NSMutableArray* _handlersArray = [[NSMutableArray alloc] init];
+
 class WebViewNative : public ComSingleObject<INativeWebView, &IID_INativeWebView>
 {
 private:
@@ -36,14 +38,27 @@ public:
         _handlersWrapper = handlers;
     }
 
-    ~WebViewNative()
+    virtual HRESULT ReleaseUnmanaged() override
     {
-        [_handlersWrapper releaseHandlers];
-        _handlersWrapper = nullptr;
-        _webView.navigationDelegate = nullptr;
-        _webView = nullptr;
-    }
+        START_COM_CALL;
+        
+        @autoreleasepool
+        {
+            [_handlersWrapper releaseHandlers];
+            [_handlersArray removeObject: _handlersWrapper];
+            
+            _handlersWrapper = nullptr;
+            if (_webView.superview != nullptr)
+            {
+                [_webView removeFromSuperview];
+            }
 
+            _webView.navigationDelegate = nullptr;
+            _webView = nullptr;
+            return S_OK;
+        }
+    }
+    
     virtual void* AsNsView () override
     {
         START_COM_CALL;
@@ -247,14 +262,11 @@ public:
 
 class WebViewNativeFactory : public ComSingleObject<IWebViewFactory, &IID_IWebViewFactory>
 {
-private:
-    NSMutableArray* _handlersArray;
 public:
     FORWARD_IUNKNOWN()
     
     virtual INativeWebView* CreateWebView (
-        INativeWebViewHandlers* handlers
-    ) override
+        INativeWebViewHandlers* handlers) override
     {
         START_COM_CALL;
         
@@ -270,8 +282,8 @@ public:
             [_handlersArray addObject: handlersWrapper];
             return new WebViewNative(handlersWrapper);
         }
-    };
-    
+    }
+
     virtual HRESULT InvalidateAllManagedReferences () override
     {
         for (WebViewHandlers * item in _handlersArray)

@@ -89,6 +89,7 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
     public void Dispose()
     {
         AppDomain.CurrentDomain.ProcessExit -= CurrentDomainOnProcessExit;
+        _nativeWebView.ReleaseUnmanaged();
         _nativeWebView.Dispose();
         _callbacks.Dispose();
     }

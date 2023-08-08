@@ -35,6 +35,7 @@ COMINTERFACE(INativeWebView, e5aca67b, 02b7, 4129, aa, 79, d6, e4, 17, 21, 0b, d
         IAvnString* script, 
         int id
     ) = 0;
+    virtual HRESULT ReleaseUnmanaged () = 0;
 };
 COMINTERFACE(INativeWebViewHandlers, e5aca67b, 02b7, 4129, aa, 79, d6, e4, 17, 21, 0b, ba) : IUnknown
 {
