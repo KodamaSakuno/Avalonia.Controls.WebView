@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PackAvaloniaNative Condition="'$(PackAvaloniaNative)' == ''">$([MSBuild]::IsOSPlatform(OSX))</PackAvaloniaNative>
-    <TargetFrameworks>net7.0;net7.0-windows10.0.22621</TargetFrameworks>
+    <TargetFrameworks>net6.0;net6.0-windows10.0.22621</TargetFrameworks>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>

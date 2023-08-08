@@ -36,7 +36,7 @@ internal sealed class WebView1Adapter : IWebViewAdapter
     {
         var process = s_lazyProcess ??= CreateProcess();
 
-        var control = await process.CreateWebViewControlAsync(Handle,
+        var control = await process.CreateWebViewControlAsync((long)Handle,
             new Windows.Foundation.Rect(0, 0, 100, 100));
 
         _webViewControl = control;
