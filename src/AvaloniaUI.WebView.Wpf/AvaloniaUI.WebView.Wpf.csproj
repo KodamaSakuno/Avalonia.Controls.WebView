@@ -3,7 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>net462;net6.0-windows</TargetFrameworks>
     <UseWpf>true</UseWpf>
-    <DefineConstants>#(DefineConstants);WPF</DefineConstants>
+    <DefineConstants>$(DefineConstants);WPF</DefineConstants>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 
