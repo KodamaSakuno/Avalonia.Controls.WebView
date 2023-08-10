@@ -14,8 +14,4 @@
     <AvaloniaVersion>11.0.1</AvaloniaVersion>
   </PropertyGroup>
 
-  <PropertyGroup>
-    <Title>AvaloniaWebView</Title>
-  </PropertyGroup>
-
 </Project>

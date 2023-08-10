@@ -47,8 +47,8 @@ class Build : NukeBuild
     Target GenerateCppHeaders => _ => _.Executes(() =>
     {
         var file = MicroComCodeGenerator.Parse(
-            File.ReadAllText(RootDirectory / "src" / "AvaloniaWebView" / "Native" / "webview.idl"));
-        File.WriteAllText(RootDirectory / "native" / "AvaloniaWebView.Native" / "inc" / "webview-native.h",
+            File.ReadAllText(RootDirectory / "src" / "AvaloniaUI.WebView.Core" / "Native" / "webview.idl"));
+        File.WriteAllText(RootDirectory / "native" / "AvaloniaUI.WebView.Native" / "inc" / "webview-native.h",
             file.GenerateCppHeader());
     });
     
@@ -58,7 +58,7 @@ class Build : NukeBuild
         .OnlyWhenStatic(() => EnvironmentInfo.IsOsx)
         .Executes(() =>
         {
-            var project = $"{RootDirectory}/native/AvaloniaWebView.Native/src/OSX/WebView.Native.OSX.xcodeproj/";
+            var project = $"{RootDirectory}/native/AvaloniaUI.WebView.Native/src/OSX/WebView.Native.OSX.xcodeproj/";
             var args = $"-project {project} -configuration {Configuration} CONFIGURATION_BUILD_DIR={RootDirectory}/Build/Products/Release";
             ProcessTasks.StartProcess("xcodebuild", args).AssertZeroExitCode();
         });
