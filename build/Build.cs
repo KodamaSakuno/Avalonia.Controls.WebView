@@ -52,7 +52,7 @@ class Build : NukeBuild
     Target GenerateCppHeaders => _ => _.Executes(() =>
     {
         var file = MicroComCodeGenerator.Parse(
-            File.ReadAllText(RootDirectory / "src" / "AvaloniaUI.WebView.Core" / "Native" / "webview.idl"));
+            File.ReadAllText(RootDirectory / "src" / "AvaloniaUI.WebView.Core" / "NativeMac" / "webview.mcidl"));
         File.WriteAllText(RootDirectory / "native" / "AvaloniaUI.WebView.Native" / "inc" / "webview-native.h",
             file.GenerateCppHeader());
     });
