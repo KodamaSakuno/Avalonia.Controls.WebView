@@ -1,8 +1,8 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace System.Runtime.CompilerServices
-{
+// ReSharper disable once CheckNamespace
+namespace System.Runtime.CompilerServices;
 #if NETSTANDARD2_0 || NETFRAMEWORK
     [AttributeUsage(AttributeTargets.Method)]
     internal sealed class ModuleInitializerAttribute : Attribute
@@ -14,7 +14,6 @@ namespace System.Runtime.CompilerServices
     {
     }
 #endif
-}
 
 internal sealed class OperatingSystemEx
 {

@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using AvaloniaUI.WebView.Core.Interop;
 using MicroCom.Runtime;
 
-namespace AvaloniaUI.WebView.Core.Native;
+namespace AvaloniaUI.WebView.NativeMac;
 
 internal sealed class NativeWebViewAdapter : IWebViewAdapter
 {
@@ -37,18 +36,15 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
     public bool CanGoBack => _nativeWebView.CanGoBack == 1;
     public bool CanGoForward => _nativeWebView.CanGoForward == 1;
 
-    public Uri? Source
+    public Uri Source
     {
         get
         {
-            using (_nativeWebView.Source)
-            {
-                return Uri.TryCreate(_nativeWebView.Source.String, UriKind.RelativeOrAbsolute, out var source) ?
-                    source :
-                    null;
-            }
+            using var sourceStr = _nativeWebView.Source;
+            return Uri.TryCreate(sourceStr.String, UriKind.RelativeOrAbsolute, out var source) ?
+                source : WebViewHelper.EmptyPage;
         }
-        set => Navigate(value!);
+        set => Navigate(value);
     }
 
     public bool GoBack()
@@ -103,7 +99,7 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
     }
 
     public unsafe IntPtr Handle => new(_nativeWebView.AsNsView());
-    public string? HandleDescriptor => "NSView";
+    public string HandleDescriptor => "NSView";
     public event EventHandler? Initialized;
     public bool IsInitialized => true;
     public void SizeChanged() { }
@@ -148,20 +144,13 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
         Dispose();
     }
 
-    private class NativeWebViewCallbacks : CallbackBase, INativeWebViewHandlers
+    private class NativeWebViewCallbacks(NativeWebViewAdapter adapter) : CallbackBase, INativeWebViewHandlers
     {
-        private readonly NativeWebViewAdapter _adapter;
-
-        public NativeWebViewCallbacks(NativeWebViewAdapter adapter)
-        {
-            _adapter = adapter;
-        }
-
         public void OnScriptResult(int id, int isError, IAvnString ppv)
         {
             using (ppv)
             {
-                _adapter.OnScriptResult(id, isError == 1, ppv.String);
+                adapter.OnScriptResult(id, isError == 1, ppv.String);
             }
         }
 
@@ -169,7 +158,7 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
         {
             using (body)
             {
-                _adapter.OnWebMessageReceived(body.String);
+                adapter.OnWebMessageReceived(body.String!);
             }
         }
 
@@ -177,7 +166,7 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
         {
             using (url)
             {
-                _adapter.OnNavigationCompleted(url.String, success == 1);
+                adapter.OnNavigationCompleted(url.String!, success == 1);
             }
         }
 
@@ -185,7 +174,7 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapter
         {
             using (url)
             {
-                *cancel = _adapter.OnNavigationStarted(url.String) ? 1 : 0;
+                *cancel = adapter.OnNavigationStarted(url.String!) ? 1 : 0;
             }
         }
     }

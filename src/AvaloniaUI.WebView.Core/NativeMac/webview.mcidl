@@ -1,4 +1,4 @@
-@clr-namespace AvaloniaUI.WebView.Core.Interop
+@clr-namespace AvaloniaUI.WebView.NativeMac
 @clr-access internal
 @clr-map bool int
 @clr-map u_int64_t ulong

@@ -1,10 +1,9 @@
 #if AVALONIA || WPF
 using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
-using AvaloniaUI.WebView.Core;
-using AvaloniaUI.WebView.Core.Native;
-using AvaloniaUI.WebView.Core.Win;
+using AvaloniaUI.WebView.NativeMac;
 using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
 #if WPF
 using System.Windows;
@@ -18,7 +17,7 @@ namespace AvaloniaUI.WebView;
 
 public class NativeWebView : NativeControlHost, IWebView
 {
-    private bool _ignoreNavigation = false;
+    private bool _ignoreNavigation;
     private TaskCompletionSource<IWebViewAdapter> _webViewReadyCompletion = new();
 
     public event EventHandler<WebViewNavigationCompletedEventArgs>? NavigationCompleted;
@@ -94,27 +93,29 @@ public class NativeWebView : NativeControlHost, IWebView
     {
         IWebViewAdapter? adapter = null;
 
+#if !NETFRAMEWORK
         if (OperatingSystemEx.IsMacOS())
         {
             adapter = new NativeWebViewAdapter();
-        }
+        } else
+#endif
         // if (OperatingSystemEx.IsLinux())
         // {
         //     new Gtk.GtkWebView2Adapter();
         //
         //     return base.CreateNativeControlCore(parent);
         //     // adapter = new Gtk.GtkWebView2Adapter();
-        // }
-        // else if (OperatingSystemEx.IsBrowser())
+        // } else
+        // if (OperatingSystemEx.IsBrowser())
         // {
         //     adapter = new BrowserIFrameAdapter();
-        // }
-#if !NETSTANDARD2_0
-        else if (OperatingSystemEx.IsWindows())
+        // } else
+#if NET6_0_OR_GREATER || NETFRAMEWORK
+        if (OperatingSystemEx.IsWindows())
         {
-            if (WebViewCapabilities.IsMsWebView2Available)
+            if (WebViewHelper.IsMsWebView2Available)
             {
-                adapter = new WebView2Adapter(base.CreateNativeControlCore(parent));
+                adapter = new Win.WebView2Adapter(base.CreateNativeControlCore(parent));
             }
             // else if (WebViewCapabilities.IsMsWebView1Available)
             // {

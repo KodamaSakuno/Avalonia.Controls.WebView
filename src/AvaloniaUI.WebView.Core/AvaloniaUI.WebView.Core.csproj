@@ -5,11 +5,12 @@
     <TargetFrameworks>netstandard2.0;net462;net6.0;net6.0-windows</TargetFrameworks>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <IsPackable>true</IsPackable>
+    <RootNamespace>AvaloniaUI.WebView</RootNamespace>
   </PropertyGroup>
 
   <!-- Common group -->
   <ItemGroup>
-    <PackageReference Include="MicroCom.CodeGenerator.MSBuild" Version="0.11.0" PrivateAssets="all"/>
+    <PackageReference Include="MicroCom.CodeGenerator.Roslyn" Version="0.11.0" />
     <PackageReference Include="Avalonia" Version="11.0"/>
   </ItemGroup>
 
@@ -20,11 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <MicroComIdl Include="Native\webview.idl"/>
-    <MicroComIdl Include="Win\win32.idl"/>
+    <AdditionalFiles Include="**/*.mcidl" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(PackAvaloniaNative)' == 'true'">
     <Content Include="..\..\build\Products\Release\libWebView.Native.OSX.dylib">
       <Link>libWebView.dylib</Link>
       <PackagePath>runtimes/osx/native/libWebView.dylib</PackagePath>

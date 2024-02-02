@@ -1,12 +1,12 @@
 using MicroCom.Runtime;
 
-namespace AvaloniaUI.WebView.Core.Native;
+namespace AvaloniaUI.WebView.NativeMac;
 
 internal abstract class CallbackBase : IUnknown, IMicroComShadowContainer
 {
-    private readonly object _lock = new object();
+    private readonly object _lock = new();
     private bool _referencedFromManaged = true;
-    private bool _referencedFromNative = false;
+    private bool _referencedFromNative;
     private bool _destroyed;
 
     public bool IsDestroyed => _destroyed;
@@ -24,7 +24,7 @@ internal abstract class CallbackBase : IUnknown, IMicroComShadowContainer
         }
     }
 
-    void DestroyIfNeeded()
+    private void DestroyIfNeeded()
     {
         if (_destroyed)
             return;

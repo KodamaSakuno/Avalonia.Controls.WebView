@@ -1,4 +1,4 @@
-@clr-namespace AvaloniaUI.WebView.Core.Interop
+@clr-namespace AvaloniaUI.WebView.Win
 @clr-access internal
 @clr-map FLOAT float
 @clr-map HSTRING IntPtr

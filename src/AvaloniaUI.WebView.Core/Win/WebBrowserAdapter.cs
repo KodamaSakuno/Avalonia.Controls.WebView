@@ -2,10 +2,9 @@
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
-using AvaloniaUI.WebView.Core.Interop;
 using MicroCom.Runtime;
 
-namespace AvaloniaUI.WebView.Core.Win;
+namespace AvaloniaUI.WebView.Win;
 
 internal unsafe class WebBrowserAdapter : IWebViewAdapter
 {
@@ -14,12 +13,12 @@ internal unsafe class WebBrowserAdapter : IWebViewAdapter
     public WebBrowserAdapter()
     {
         var guid = Guid.Parse("8856f961-340a-11d0-a96b-00c04fd705a2");
-        var iunknown = Guid.Parse("00000000-0000-0000-C000-000000000046");
+        var unknown = Guid.Parse("00000000-0000-0000-C000-000000000046");
         IntPtr result;
-        var res = WinApiHelpers.CoCreateInstance(guid, default, 0x1, iunknown, &result);
+        var res = WinApiHelpers.CoCreateInstance(guid, default, 0x1, unknown, &result);
         if (res != 0) throw new Win32Exception(res);
 
-        var browser = MicroComRuntime.CreateProxyFor<IWebBrowser>(result, false);
+        using var browser = MicroComRuntime.CreateProxyFor<IWebBrowser>(result, false);
         _webBrowser = browser.QueryInterface<IWebBrowser2>();
         Handle = result;
     }
@@ -29,9 +28,9 @@ internal unsafe class WebBrowserAdapter : IWebViewAdapter
     public event EventHandler<WebViewNavigationCompletedEventArgs>? NavigationCompleted;
     public event EventHandler<WebViewNavigationStartingEventArgs>? NavigationStarted;
     public event EventHandler<WebMessageReceivedEventArgs>? WebMessageReceived;
-    public bool CanGoBack { get; }
-    public bool CanGoForward { get; }
-    public Uri? Source { get; set; }
+    public bool CanGoBack => true;
+    public bool CanGoForward => true;
+    public Uri Source { get => throw new NotImplementedException(); set => Navigate(value); }
 
     public bool GoBack()
     {
@@ -47,19 +46,19 @@ internal unsafe class WebBrowserAdapter : IWebViewAdapter
 
     public Task<string?> InvokeScript(string script)
     {
-        return Task.FromResult<string>(null);
+        return Task.FromResult<string?>(null);
     }
 
     public void Navigate(Uri url)
     {
-        var bstr = Marshal.StringToBSTR(url.AbsoluteUri);
-        int[] arr = { 0 };
+        var str = Marshal.StringToBSTR(url.AbsoluteUri);
+        int[] arr = [0];
         fixed (void* p = arr)
         {
-            _webBrowser.Navigate(bstr, p, null, null, null);
+            _webBrowser.Navigate(str, p, null, null, null);
         }
 
-        Marshal.FreeBSTR(bstr);
+        Marshal.FreeBSTR(str);
     }
 
     public void NavigateToString(string text)
@@ -79,6 +78,7 @@ internal unsafe class WebBrowserAdapter : IWebViewAdapter
 
     public void Dispose()
     {
+        _webBrowser.Dispose();
     }
 
     public event EventHandler? Initialized;

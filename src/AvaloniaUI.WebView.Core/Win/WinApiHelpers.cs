@@ -1,7 +1,10 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace AvaloniaUI.WebView.Core.Win;
+// ReSharper disable InconsistentNaming
+// ReSharper disable IdentifierTypo
+
+namespace AvaloniaUI.WebView.Win;
 
 internal static unsafe class WinApiHelpers
 {

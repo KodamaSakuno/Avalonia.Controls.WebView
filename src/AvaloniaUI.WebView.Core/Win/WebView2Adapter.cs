@@ -1,12 +1,11 @@
-﻿#if !NETSTANDARD2_0
+﻿#if NET6_0_OR_GREATER || NETFRAMEWORK
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Threading.Tasks;
 using Avalonia.Platform;
 using Microsoft.Web.WebView2.Core;
 
-namespace AvaloniaUI.WebView.Core.Win;
+namespace AvaloniaUI.WebView.Win;
 
 internal class WebView2Adapter : IWebViewAdapter
 {
@@ -21,7 +20,7 @@ internal class WebView2Adapter : IWebViewAdapter
     }
 
     public IntPtr Handle { get; }
-    public string? HandleDescriptor => "HWDN";
+    public string HandleDescriptor => "HWDN";
 
     public bool IsInitialized { get; private set; }
 
@@ -32,13 +31,9 @@ internal class WebView2Adapter : IWebViewAdapter
 
     public Uri Source
     {
-#if !NETFRAMEWORK
-        [return: MaybeNull]
-#endif
         get
         {
-            if (Uri.TryCreate(_controller?.CoreWebView2?.Source, UriKind.Absolute, out var url)) return url;
-            return null!;
+            return Uri.TryCreate(_controller?.CoreWebView2?.Source, UriKind.Absolute, out var url) ? url : null!;
         }
         set => _controller?.CoreWebView2?.Navigate(value.AbsoluteUri);
     }

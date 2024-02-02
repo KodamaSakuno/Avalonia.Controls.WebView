@@ -44,7 +44,14 @@ internal interface IWebView
     ///     The Source property is the URI of the top level document of the WebView2. Setting the Source is equivalent to
     ///     calling <see cref="Navigate" />.
     /// </summary>
-    Uri? Source { get; set; }
+    Uri Source
+    {
+#if NET6_0_OR_GREATER
+        [return: System.Diagnostics.CodeAnalysis.MaybeNull]
+#endif
+        get;
+        set;
+    }
 
     /// <summary>
     ///     NavigationCompleted dispatches after a navigate of the top level document completes rendering either successfully

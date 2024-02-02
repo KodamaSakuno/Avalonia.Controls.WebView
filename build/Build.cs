@@ -25,19 +25,7 @@ class Build : NukeBuild
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = IsLocalBuild ? Configuration.Debug : Configuration.Release;
 
-    Target Clean => _ => _
-        .Before(Restore)
-        .Executes(() =>
-        {
-        });
-
-    Target Restore => _ => _
-        .Executes(() =>
-        {
-        });
-
     Target Compile => _ => _
-        .DependsOn(Restore)
         .DependsOn(CompileNative)
         .Executes(() =>
         {
@@ -52,7 +40,6 @@ class Build : NukeBuild
     });
 
     Target CompileNative => _ => _
-        .DependsOn(Clean)
         .DependsOn(GenerateCppHeaders)
         .OnlyWhenStatic(() => EnvironmentInfo.IsOsx)
         .Executes(() =>
