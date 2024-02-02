@@ -41,7 +41,7 @@ class Build : NukeBuild
 
     Target CompileNative => _ => _
         .DependsOn(GenerateCppHeaders)
-        .OnlyWhenStatic(() => EnvironmentInfo.IsOsx)
+        .OnlyWhenStatic(() => IsOsx)
         .Executes(() =>
         {
             var project = $"{RootDirectory}/native/AvaloniaUI.WebView.Native/src/OSX/WebView.Native.OSX.xcodeproj/";
