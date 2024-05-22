@@ -8,15 +8,10 @@ on:
 
 jobs:
 
-  cicd:
-
+  build:
     runs-on: [macos-latest]
-
     steps:
     - uses: actions/checkout@v3
-
-    - name: Install Nuke
-      run: dotnet tool install --global Nuke.GlobalTool --version 8.0.0
 
     - name: Clean packages
       run: rm -rf ${{github.workspace}}/artifacts/packages
@@ -26,9 +21,17 @@ jobs:
 
     - uses: actions/upload-artifact@v4
       with:
+        name: packages
         path: ${{github.workspace}}/artifacts/packages
         if-no-files-found: error
 
-    - name: Publish
-      if: github.ref == 'refs/heads/main'
-      run: dotnet nuget push ${{github.workspace}}/artifacts/packages/*.nupkg  --api-key ${{secrets.baget_api_key}} --source http://192.168.122.109:8003/v3/index.json
+  upload:
+    runs-on: [self-hosted, Linux]
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages
+      - name: Publish
+        if: github.ref == 'refs/heads/main'
+        run: dotnet nuget push ${{github.workspace}}/artifacts/packages/*.nupkg  --api-key ${{secrets.baget_api_key}} --source http://192.168.122.109:8003/v3/index.json
