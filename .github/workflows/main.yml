@@ -34,4 +34,4 @@ jobs:
           name: packages
       - name: Publish
         if: github.ref == 'refs/heads/main'
-        run: dotnet nuget push ${{github.workspace}}/artifacts/packages/*.nupkg  --api-key ${{secrets.baget_api_key}} --source http://192.168.122.109:8003/v3/index.json
+        run: dotnet nuget push ${{github.workspace}}/**/*.nupkg  --api-key ${{secrets.baget_api_key}} --source http://192.168.122.109:8003/v3/index.json
