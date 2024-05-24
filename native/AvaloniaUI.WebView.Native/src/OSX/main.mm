@@ -3,6 +3,11 @@
 #include "common.h"
 #include "AvnString.h"
 
+
+@interface AvaloniaWKWebView : WKWebView
+
+@end
+
 @interface WebViewHandlers : NSObject<WKNavigationDelegate, WKScriptMessageHandler>
 -(id)initWithHandlers: (INativeWebViewHandlers*) arg;
 -(void)releaseHandlers;
@@ -14,7 +19,7 @@ NSMutableArray* _handlersArray = [[NSMutableArray alloc] init];
 class WebViewNative : public ComSingleObject<INativeWebView, &IID_INativeWebView>
 {
 private:
-    WKWebView* _webView;
+    AvaloniaWKWebView* _webView;
     WebViewHandlers* _handlersWrapper;
 
 public:
@@ -33,7 +38,7 @@ public:
         [config.preferences setValue:@YES forKey:@"developerExtrasEnabled"]; // only for debug
 
         CGRect frame = {};
-        _webView = [[WKWebView alloc] initWithFrame:frame configuration:config];
+        _webView = [[AvaloniaWKWebView alloc] initWithFrame:frame configuration:config];
         _webView.navigationDelegate = handlers;
         _handlersWrapper = handlers;
     }
@@ -190,6 +195,11 @@ public:
     }
 };
 
+@implementation AvaloniaWKWebView
+
+@end
+
+
 @implementation WebViewHandlers {
     ComPtr<INativeWebViewHandlers> handler;
 }
@@ -204,10 +214,11 @@ public:
 }
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
 {
+    if (handler == nullptr) return;
+    auto url = webView.URL.absoluteString;
+
     @autoreleasepool
     {
-        if (handler == nullptr) return;
-        auto url = webView.URL.absoluteString;
         auto str = CreateAvnString(url);
         handler->OnNavigationCompleted(str, true);
     }
@@ -216,28 +227,31 @@ public:
     decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction
     decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
 {
+    if (handler == nullptr) return;
+    auto url = webView.URL.absoluteString;
+    bool cancel = false;
+
     @autoreleasepool
     {
-        if (handler == nullptr) return;
-        auto url = webView.URL.absoluteString;
         auto str = CreateAvnString(url);
-        bool cancel = false;
         handler->OnNavigationStarted(str, &cancel);
-        if (cancel)
-        {
-            decisionHandler(WKNavigationActionPolicyCancel);
-        }
-        else
-        {
-            decisionHandler(WKNavigationActionPolicyAllow);
-        }
+    }
+
+    if (cancel)
+    {
+        decisionHandler(WKNavigationActionPolicyCancel);
+    }
+    else
+    {
+        decisionHandler(WKNavigationActionPolicyAllow);
     }
 }
 -(void)onScriptResult:(int)index withResult:(id)result withError:(NSError*)error
 {
+    if (handler == nullptr) return;
+
     @autoreleasepool
     {
-        if (handler == nullptr) return;
         if (error != nullptr)
         {
             handler->OnScriptResult(index, true, CreateAvnString(error.localizedDescription));
@@ -250,11 +264,12 @@ public:
 }
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message
 {
-    @autoreleasepool
+    if ([message.name isEqualToString:@"postWebViewMessage"])
     {
-        if ([message.name isEqualToString:@"postWebViewMessage"])
+        @autoreleasepool
         {
-            handler->OnWebMessageReceived(CreateAvnString((NSString *)message.body));
+            auto str = CreateAvnString((NSString *)message.body);
+            handler->OnWebMessageReceived(str);
         }
     }
 }
