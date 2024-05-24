@@ -1,8 +1,8 @@
-﻿<Project Sdk="Xpf.Sdk/9999.0.0-localbuild">
+﻿<Project Sdk="Xpf.Sdk/1.1.0">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net6.0-windows</TargetFramework>
+    <TargetFramework>net7.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <XpfReplaceSystemDrawing>false</XpfReplaceSystemDrawing>
