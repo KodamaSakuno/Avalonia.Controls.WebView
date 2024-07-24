@@ -7,10 +7,12 @@ using AvaloniaUI.WebView.NativeMac;
 using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
 #if WPF
 using System.Windows;
+using System.Windows.Threading;
 using NativeControlHost = AvaloniaUI.Xpf.WpfAbstractions.NativeControlHost;
 #elif AVALONIA
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Threading;
 #endif
 
 namespace AvaloniaUI.WebView;
@@ -33,6 +35,13 @@ public class NativeWebView : NativeControlHost, IWebView
     public static readonly StyledProperty<Uri> SourceProperty = AvaloniaProperty.Register<NativeWebView, Uri>(
         nameof(Source), new Uri("about:blank"));
 #endif
+
+    public NativeWebView()
+    {
+#if WPF
+        IsVisibleChanged += OnIsVisibleChanged;
+#endif
+    }
 
     public Uri Source
     {
@@ -205,10 +214,23 @@ public class NativeWebView : NativeControlHost, IWebView
         }
     }
 
+    private void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        _ = Dispatcher.InvokeAsync(() => TryGetAdapter()?.SizeChanged(), DispatcherPriority.Background);
+    }
+
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
+        base.OnRenderSizeChanged(sizeInfo);
         TryGetAdapter()?.SizeChanged();
     }
+
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        TryGetAdapter()?.SizeChanged();
+    }
+
 #elif AVALONIA
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -225,6 +247,10 @@ public class NativeWebView : NativeControlHost, IWebView
         else if (change.Property == BoundsProperty)
         {
             TryGetAdapter()?.SizeChanged();
+        }
+        else if (change.Property == IsVisibleProperty)
+        {
+            _ = Dispatcher.UIThread.InvokeAsync(() => TryGetAdapter()?.SizeChanged(), DispatcherPriority.Background);
         }
     }
 #endif
