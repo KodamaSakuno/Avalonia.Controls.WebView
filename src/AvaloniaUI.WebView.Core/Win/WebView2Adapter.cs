@@ -1,12 +1,18 @@
 ﻿#if NET6_0_OR_GREATER || NETFRAMEWORK
 using System;
 using System.Drawing;
+using System.Runtime.Versioning;
 using System.Threading.Tasks;
+using Windows.Win32;
+using Windows.Win32.Foundation;
 using Avalonia.Platform;
 using Microsoft.Web.WebView2.Core;
 
 namespace AvaloniaUI.WebView.Win;
 
+#if NET6_0_OR_GREATER
+[SupportedOSPlatform("windows7.0")]
+#endif
 internal class WebView2Adapter : IWebViewAdapter
 {
     private CoreWebView2Controller? _controller;
@@ -89,12 +95,11 @@ internal class WebView2Adapter : IWebViewAdapter
 
     public void SizeChanged()
     {
-        WinApiHelpers.GetWindowRect(Handle, out var rect);
-
-        if (_controller is not null)
+        if (PInvoke.GetWindowRect(new HWND(Handle), out var rect)
+            && _controller is not null)
         {
             _controller.BoundsMode = CoreWebView2BoundsMode.UseRawPixels;
-            _controller.Bounds = new Rectangle(0, 0, rect.Right - rect.Left, rect.Bottom - rect.Top);
+            _controller.Bounds = new Rectangle(0, 0, rect.Width, rect.Height);
         }
     }
 

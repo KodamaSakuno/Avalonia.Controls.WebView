@@ -1,11 +1,19 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Threading.Tasks;
+using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.System.Com;
+using Avalonia.Platform;
 using MicroCom.Runtime;
 
 namespace AvaloniaUI.WebView.Win;
 
+#if NET6_0_OR_GREATER
+[SupportedOSPlatform("windows7.0")]
+#endif
 internal unsafe class WebBrowserAdapter : IWebViewAdapter
 {
     private readonly IWebBrowser2 _webBrowser;
@@ -14,13 +22,14 @@ internal unsafe class WebBrowserAdapter : IWebViewAdapter
     {
         var guid = Guid.Parse("8856f961-340a-11d0-a96b-00c04fd705a2");
         var unknown = Guid.Parse("00000000-0000-0000-C000-000000000046");
-        IntPtr result;
-        var res = WinApiHelpers.CoCreateInstance(guid, default, 0x1, unknown, &result);
-        if (res != 0) throw new Win32Exception(res);
+        void* result;
+        var res = PInvoke.CoCreateInstance(&guid, default, CLSCTX.CLSCTX_INPROC_SERVER, &unknown, &result);
+        if (res != 0)
+            throw new Win32Exception(res);
 
         using var browser = MicroComRuntime.CreateProxyFor<IWebBrowser>(result, false);
         _webBrowser = browser.QueryInterface<IWebBrowser2>();
-        Handle = result;
+        Handle = new IntPtr(result);
     }
 
     public IntPtr Handle { get; }

@@ -2,16 +2,30 @@
 
   <PropertyGroup>
     <PackAvaloniaNative Condition="'$(PackAvaloniaNative)' == ''">$([MSBuild]::IsOSPlatform(OSX))</PackAvaloniaNative>
-    <TargetFrameworks>netstandard2.0;net462;net6.0;net6.0-windows</TargetFrameworks>
+    <TargetFrameworks>
+      netstandard2.0;net462;
+      net6.0;net8.0
+    </TargetFrameworks>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     <IsPackable>true</IsPackable>
     <RootNamespace>AvaloniaUI.WebView</RootNamespace>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+    <WarningsAsErrors>$(WarningsAsErrors);CA1420;CA1421;</WarningsAsErrors>
   </PropertyGroup>
 
   <!-- Common group -->
   <ItemGroup>
     <PackageReference Include="MicroCom.CodeGenerator.Roslyn" Version="0.11.0" />
-    <PackageReference Include="Avalonia" Version="11.0"/>
+    <PackageReference Include="Avalonia" Version="11.0" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.106">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+  
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'net462'">
+    <PackageReference Include="System.Memory" Version="4.5.5" />
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
   </ItemGroup>
 
   <!-- Windows only group -->
@@ -34,7 +48,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="AvaloniaUI.WebView.Avalonia"/>
-    <InternalsVisibleTo Include="AvaloniaUI.WebView.Wpf"/>
+    <InternalsVisibleTo Include="AvaloniaUI.WebView.Avalonia" />
+    <InternalsVisibleTo Include="AvaloniaUI.WebView.Wpf" />
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.DisableRuntimeMarshalling"
+                       Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))" />
   </ItemGroup>
 </Project>
