@@ -5,7 +5,7 @@ namespace AvaloniaUI.WebView;
 
 internal class WebViewHelper
 {
-    public static Uri EmptyPage { get; } = new("about:blank"); 
+    public static Uri EmptyPage { get; } = new("about:blank");
 
     private static bool? s_isMsWebView2Available;
     public static bool IsMsWebView2Available => s_isMsWebView2Available ??= IsMsWebView2AvailableInternal();
@@ -23,7 +23,7 @@ internal class WebViewHelper
         {
             return false;
         }
-        
+
 #if !NETSTANDARD2_0
         try
         {

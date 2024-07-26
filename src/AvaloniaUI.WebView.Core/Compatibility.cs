@@ -1,20 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
 
-// ReSharper disable once CheckNamespace
-namespace System.Runtime.CompilerServices;
-#if NETSTANDARD2_0 || NETFRAMEWORK
-    [AttributeUsage(AttributeTargets.Method)]
-    internal sealed class ModuleInitializerAttribute : Attribute
-    {
-
-    }
-
-    internal static class IsExternalInit
-    {
-    }
-#endif
-
 internal sealed class OperatingSystemEx
 {
 #if NET6_0_OR_GREATER
