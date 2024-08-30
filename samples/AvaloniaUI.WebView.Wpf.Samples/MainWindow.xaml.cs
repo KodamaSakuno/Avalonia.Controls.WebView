@@ -1,4 +1,6 @@
 ﻿using System.Windows.Input;
+using Avalonia;
+using AvaloniaUI.Xpf.WpfAbstractions;
 using TabItem = System.Windows.Controls.TabItem;
 using Window = System.Windows.Window;
 
@@ -12,6 +14,8 @@ namespace AvaloniaUI.WebView.Wpf.Samples
         public MainWindow()
         {
             InitializeComponent();
+            var w = XpfWpfAbstraction.GetAvaloniaWindowForWindow(this);
+            w.AttachDevTools();
         }
 
         private async void NativeWebView_OnNavigationCompleted(object? sender, WebViewNavigationCompletedEventArgs e)
@@ -52,7 +56,27 @@ namespace AvaloniaUI.WebView.Wpf.Samples
 
         private void WebView_OnKeyDown(object sender, KeyEventArgs e)
         {
-            LogList.Text += "\r\nWebView_OnKeyDown " + e.Key;
+            LogList.Text += "\r\nWebView_OnKeyDown " + e.Key + " " + Keyboard.Modifiers;
+        }
+
+        private void WebView_OnKeyUp(object sender, KeyEventArgs e)
+        {
+            LogList.Text += "\r\nWebView_OnKeyUp " + e.Key + " " + Keyboard.Modifiers;
+        }
+
+        private void WebView_OnPreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            LogList.Text += "\r\nWebView_OnPreviewKeyDown " + e.Key + " " + Keyboard.Modifiers;
+        }
+
+        private void WebView_OnPreviewKeyUp(object sender, KeyEventArgs e)
+        {
+            LogList.Text += "\r\nWebView_OnPreviewKeyUp " + e.Key + " " + Keyboard.Modifiers;
+        }
+
+        private void WebView_OnTextInput(object sender, TextCompositionEventArgs e)
+        {
+            LogList.Text += "\r\nWebView_OnTextInput " + e.Text;
         }
     }
 }

@@ -15,11 +15,15 @@
           <RowDefinition Height="1*" />
         </Grid.RowDefinitions>
         <wpf:NativeWebView x:Name="WebView"
-                           Source="https://avaloniaui.net/"
+                           Source="https://google.com/"
                            NavigationCompleted="NativeWebView_OnNavigationCompleted"
                            NavigationStarted="NativeWebView_OnNavigationStarted"
                            WebMessageReceived="NativeWebView_OnWebMessageReceived"
-                           KeyDown="WebView_OnKeyDown"/>
+                           PreviewKeyDown="WebView_OnPreviewKeyDown"
+                           PreviewKeyUp="WebView_OnPreviewKeyUp"
+                           TextInput="WebView_OnTextInput"
+                           KeyDown="WebView_OnKeyDown"
+                           KeyUp="WebView_OnKeyUp"/>
         <TextBox IsReadOnly="True" Grid.Row="1" x:Name="LogList" />
       </Grid>
     </TabItem>

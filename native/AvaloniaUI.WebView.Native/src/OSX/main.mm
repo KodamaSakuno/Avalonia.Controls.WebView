@@ -5,15 +5,15 @@
 
 
 @interface AvaloniaWKWebView : WKWebView
-
+@property (nonatomic,strong) id localEventHandler;
 @end
 
-@interface WebViewHandlers : NSObject<WKNavigationDelegate, WKScriptMessageHandler>
+@interface WebViewDelegate : NSObject<WKNavigationDelegate, WKScriptMessageHandler>
 -(id)initWithHandlers: (INativeWebViewHandlers*) arg;
 -(void)releaseHandlers;
 -(void)onScriptResult:(int)index withResult:(id)result withError:(NSError*)error;
--(BOOL)becomeFirstResponder;
--(BOOL)resignFirstResponder;
+-(void)onBecameFirstResponder;
+-(void)onResignedFirstResponder;
 @end
 
 NSMutableArray* _handlersArray = [[NSMutableArray alloc] init];
@@ -22,12 +22,12 @@ class WebViewNative : public ComSingleObject<INativeWebView, &IID_INativeWebView
 {
 private:
     AvaloniaWKWebView* _webView;
-    WebViewHandlers* _handlersWrapper;
+    WebViewDelegate* _handlersWrapper;
 
 public:
     FORWARD_IUNKNOWN()
 
-    WebViewNative(WebViewHandlers* handlers)
+    WebViewNative(WebViewDelegate* handlers)
     {
         WKWebViewConfiguration* config = [[WKWebViewConfiguration alloc] init];
         if (@available(macOS 11, *)) {
@@ -55,17 +55,20 @@ public:
             [_handlersArray removeObject: _handlersWrapper];
             
             _handlersWrapper = nullptr;
-            if (_webView.superview != nullptr)
+            if (NSThread.isMainThread)
             {
-                [_webView removeFromSuperview];
-            }
+                if (_webView.superview != nullptr)
+                {
+                    [_webView removeFromSuperview];
+                }
 
-            _webView.navigationDelegate = nullptr;
+                _webView.navigationDelegate = nullptr;
+            }
             _webView = nullptr;
             return S_OK;
         }
     }
-    
+
     virtual void* AsNsView () override
     {
         START_COM_CALL;
@@ -155,7 +158,7 @@ public:
                 baseNsUrl = [NSURL URLWithString: GetNSStringWithoutRelease(baseUrl)];
             }
             
-            auto navigation = [_webView loadHTMLString: GetNSStringWithoutRelease(text) baseURL: baseNsUrl];
+            [_webView loadHTMLString: GetNSStringWithoutRelease(text) baseURL: baseNsUrl];
             return S_OK;
         }
     }
@@ -195,7 +198,7 @@ public:
             return S_OK;
         }
     }
-    
+
     virtual bool Focus () override
     {
         START_COM_CALL;
@@ -213,27 +216,114 @@ public:
 };
 
 @implementation AvaloniaWKWebView
+
+- (void)viewDidMoveToSuperview {
+    // When embed in Avalonia, webview for some reason stops receiving any hotkey events.
+    // keyDown is also ignored, even though firstResponder is correct.
+    // Work around that:
+    if ([self superview] != nil) {
+        NSEvent * (^monitorHandler)(NSEvent *);
+        monitorHandler = ^NSEvent * (NSEvent * theEvent) {
+            auto firstResponder = [[self window] firstResponder];
+            if (firstResponder != self) {
+                return theEvent;
+            }
+            
+            auto modifier = [theEvent modifierFlags];
+            if ([theEvent type] == NSEventTypeKeyDown)
+            {
+                SEL selector = NULL;
+                auto isCommandFlag = (modifier & NSEventModifierFlagCommand) != 0;
+                auto chars = [theEvent charactersIgnoringModifiers];
+                
+                if (isCommandFlag) {
+                    if ([chars isEqualToString:@"c"]) {
+                        selector = @selector(copy:);
+                    } else if ([chars isEqualToString:@"v"]) {
+                        selector = @selector(paste:);
+                    } else if ([chars isEqualToString:@"x"]) {
+                        selector = @selector(cut:);
+                    } else if ([chars isEqualToString:@"a"]) {
+                        selector = @selector(selectAll:);
+                    }
+                }
+
+                if (selector != NULL) {
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                    [self performSelector:selector];
+    #pragma clang diagnostic pop
+                    return nil;
+                }
+            }
+
+            // Redirect back to Avalonia, but only keys with modifiers because WKWebView seems to swallow them.
+            // Normal key events without modifiers work already.
+            if (modifier & NSEventModifierFlagControl
+                || modifier & NSEventModifierFlagShift
+                || modifier & NSEventModifierFlagOption
+                || modifier & NSEventModifierFlagCommand)
+            {
+                auto avView = [[self superview] superview];
+                if ([theEvent type] == NSEventTypeKeyDown)
+                    [avView keyDown: theEvent];
+                else if ([theEvent type] == NSEventTypeKeyUp)
+                    [avView keyUp: theEvent];
+                else if ([theEvent type] == NSEventTypeFlagsChanged)
+                    [avView flagsChanged: theEvent];
+                return nil;
+            }
+
+            return theEvent;
+        };
+        auto mask = NSEventMaskKeyDown | NSEventMaskKeyUp | NSEventMaskFlagsChanged;
+        self.localEventHandler = [NSEvent
+                                  addLocalMonitorForEventsMatchingMask:mask
+                                  handler:monitorHandler];
+    }
+    else {
+        [NSEvent removeMonitor:self.localEventHandler];
+        self.localEventHandler = nil;
+    }
+}
+
 - (BOOL)acceptsFirstResponder {
     return true;
 }
+
 - (BOOL)becomeFirstResponder {
-    auto handlers = (WebViewHandlers*)[self navigationDelegate];
-    if (handlers) {
-        return [handlers becomeFirstResponder];
-    }
-    return [super becomeFirstResponder];
+    if (![super becomeFirstResponder])
+        return false;
+
+    [self notifyOnBecameFirstResponder];
+    return true;
 }
-- (BOOL)resignFirstResponder {
-    auto handlers = (WebViewHandlers*)[self navigationDelegate];
-    if (handlers) {
-        return [handlers resignFirstResponder];
+-(void) notifyOnBecameFirstResponder{
+    auto delegate = [self navigationDelegate];
+    auto handler = (WebViewDelegate*)delegate;
+    if (handler) {
+        [handler onBecameFirstResponder];
     }
-    return [super resignFirstResponder];
+}
+
+- (BOOL)resignFirstResponder {
+    if (![super resignFirstResponder])
+        return false;
+
+    [self notifyOnResignedFirstResponder];
+    return true;
+}
+-(void) notifyOnResignedFirstResponder{
+    auto delegate = [self navigationDelegate];
+    auto handler = (WebViewDelegate*)delegate;
+    if (handler) {
+        [handler onResignedFirstResponder];
+    }
 }
 @end
 
 
-@implementation WebViewHandlers {
+@implementation WebViewDelegate {
     ComPtr<INativeWebViewHandlers> handler;
 }
 - (id)initWithHandlers: (INativeWebViewHandlers*) arg
@@ -245,47 +335,35 @@ public:
 {
     handler = nil;
 }
-- (BOOL)becomeFirstResponder {
-    @autoreleasepool
-    {
-        bool cancel = false;
-        handler->BecomeFirstResponder(&cancel);
-        return !cancel;
-    }
+- (void)onBecameFirstResponder {
+    handler->OnBecameFirstResponder();
 }
-- (BOOL)resignFirstResponder {
-    @autoreleasepool
-    {
-        bool cancel = false;
-        handler->ResignFirstResponder(&cancel);
-        return !cancel;
-    }
+- (void)onResignedFirstResponder {
+    handler->OnResignedFirstResponder();
 }
+
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
 {
     if (handler == nullptr) return;
-    auto url = webView.URL.absoluteString;
 
+    [self notifyOnNavigationCompleted: webView.URL.absoluteString];
+}
+- (void) notifyOnNavigationCompleted:(NSString*)url {
     @autoreleasepool
     {
         auto str = CreateAvnString(url);
         handler->OnNavigationCompleted(str, true);
     }
 }
+
 - (void)webView:(WKWebView *)webView
     decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction
     decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
 {
     if (handler == nullptr) return;
-    auto url = webView.URL.absoluteString;
+
     bool cancel = false;
-
-    @autoreleasepool
-    {
-        auto str = CreateAvnString(url);
-        handler->OnNavigationStarted(str, &cancel);
-    }
-
+    [self notifyOnNavigationStarted: webView.URL.absoluteString withCancel: &cancel];
     if (cancel)
     {
         decisionHandler(WKNavigationActionPolicyCancel);
@@ -295,6 +373,15 @@ public:
         decisionHandler(WKNavigationActionPolicyAllow);
     }
 }
+- (void) notifyOnNavigationStarted:(NSString*)url withCancel:(bool*) cancel {
+    
+    @autoreleasepool
+    {
+        auto str = CreateAvnString(url);
+        handler->OnNavigationStarted(str, cancel);
+    }
+}
+
 -(void)onScriptResult:(int)index withResult:(id)result withError:(NSError*)error
 {
     if (handler == nullptr) return;
@@ -311,6 +398,7 @@ public:
         }
     }
 }
+
 - (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message
 {
     if ([message.name isEqualToString:@"postWebViewMessage"])
@@ -342,7 +430,7 @@ public:
             if (_handlersArray == nullptr)
                 _handlersArray = [[NSMutableArray alloc] init];
             
-            auto handlersWrapper = [[WebViewHandlers alloc] initWithHandlers: handlers];
+            auto handlersWrapper = [[WebViewDelegate alloc] initWithHandlers: handlers];
             [_handlersArray addObject: handlersWrapper];
             return new WebViewNative(handlersWrapper);
         }
@@ -350,7 +438,7 @@ public:
 
     virtual HRESULT InvalidateAllManagedReferences () override
     {
-        for (WebViewHandlers * item in _handlersArray)
+        for (WebViewDelegate * item in _handlersArray)
         {
             [item releaseHandlers];
         }

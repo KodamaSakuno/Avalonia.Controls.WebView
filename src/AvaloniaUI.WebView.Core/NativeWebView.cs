@@ -23,6 +23,7 @@ namespace AvaloniaUI.WebView;
 public class NativeWebView : NativeControlHost, IWebView
 {
     private bool _ignoreNavigation;
+    private bool _ignoreFocusChanges;
     private TaskCompletionSource<IWebViewAdapter> _webViewReadyCompletion = new();
 
     public event EventHandler<WebViewNavigationCompletedEventArgs>? NavigationCompleted;
@@ -199,24 +200,35 @@ public class NativeWebView : NativeControlHost, IWebView
         }
     }
 
-    private void WithFocusOnGotFocus(object sender, CancelEventArgs e)
+    private void WithFocusOnGotFocus(object sender, EventArgs e)
     {
+        _ignoreFocusChanges = true;
+        try
+        {
 #if WPF
-        var focusScope = FocusManager.GetFocusScope(this);
-        if (FocusManager.GetFocusedElement(focusScope) != this)
-        {
-            FocusManager.SetFocusedElement(focusScope, this);
-        }
+            if (Window.GetWindow(this) is { } wpfWindow
+                && XpfWpfAbstraction.GetAvaloniaWindowForWindow(wpfWindow) is { } avWindow)
+            {
+                // Ideally, we should search for XpfHost.
+                avWindow.Focus();
+            }
+
+            Keyboard.Focus(this);
 #elif AVALONIA
-        var focusManager = TopLevel.GetTopLevel(this)?.FocusManager;
-        if (focusManager != this)
-        {
-            Focus();
-        }
+            var focusManager = TopLevel.GetTopLevel(this)?.FocusManager;
+            if (focusManager != this)
+            {
+                Focus();
+            }
 #endif
+        }
+        finally
+        {
+            _ignoreFocusChanges = false;
+        }
     }
 
-    private void WithFocusOnLostFocus(object sender, CancelEventArgs e)
+    private void WithFocusOnLostFocus(object sender, EventArgs e)
     {
         // no-op?
     }
@@ -307,7 +319,11 @@ public class NativeWebView : NativeControlHost, IWebView
 #endif
     {
         base.OnGotFocus(e);
-        e.Handled = (TryGetAdapter() as IWebViewAdapterWithFocus)?.Focus() ?? false;
+        if (!_ignoreFocusChanges
+            && TryGetAdapter() is IWebViewAdapterWithFocus adapterWithFocus)
+        {
+            _ = adapterWithFocus.Focus();
+        }
     }
 
     protected override void DestroyNativeControlCore(IPlatformHandle control)

@@ -1,11 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using Avalonia.Platform;
-using MicroCom.Runtime;
 
 namespace AvaloniaUI.WebView.NativeMac;
 
@@ -37,8 +35,8 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapterWithFocus
     public event EventHandler<WebViewNavigationCompletedEventArgs>? NavigationCompleted;
     public event EventHandler<WebViewNavigationStartingEventArgs>? NavigationStarted;
     public event EventHandler<WebMessageReceivedEventArgs>? WebMessageReceived;
-    public event EventHandler<CancelEventArgs>? GotFocus;
-    public event EventHandler<CancelEventArgs>? LostFocus;
+    public event EventHandler? GotFocus;
+    public event EventHandler? LostFocus;
     public bool CanGoBack => _nativeWebView.CanGoBack == 1;
     public bool CanGoForward => _nativeWebView.CanGoForward == 1;
 
@@ -149,18 +147,14 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapterWithFocus
         WebMessageReceived?.Invoke(this, new WebMessageReceivedEventArgs { Body = body });
     }
 
-    private bool OnLostFocus()
+    private void OnLostFocus()
     {
-        var args = new CancelEventArgs();
-        LostFocus?.Invoke(this, args);
-        return args.Cancel;
+        LostFocus?.Invoke(this, EventArgs.Empty);
     }
 
-    private bool OnGotFocus()
+    private void OnGotFocus()
     {
-        var args = new CancelEventArgs();
-        GotFocus?.Invoke(this, args);
-        return args.Cancel;
+        GotFocus?.Invoke(this, EventArgs.Empty);
     }
 
     private void CurrentDomainOnProcessExit(object? sender, EventArgs e)
@@ -202,14 +196,14 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapterWithFocus
             }
         }
 
-        public unsafe void BecomeFirstResponder(int* handled)
+        public unsafe void OnBecameFirstResponder()
         {
-            *handled = adapter.OnGotFocus() ? 1 : 0;
+            adapter.OnGotFocus();
         }
 
-        public unsafe void ResignFirstResponder(int* handled)
+        public unsafe void OnResignedFirstResponder()
         {
-            *handled = adapter.OnLostFocus() ? 1 : 0;
+            adapter.OnLostFocus();
         }
     }
 }
