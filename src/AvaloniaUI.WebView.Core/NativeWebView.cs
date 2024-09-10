@@ -349,6 +349,20 @@ public class NativeWebView : NativeControlHost, IWebView
         }
     }
 
+#if WPF
+    protected override void OnLostFocus(RoutedEventArgs e)
+#elif AVALONIA
+    protected override void OnLostFocus(RoutedEventArgs e)
+#endif
+    {
+        base.OnLostFocus(e);
+        if (!_ignoreFocusChanges
+            && TryGetAdapter() is IWebViewAdapterWithFocus adapterWithFocus)
+        {
+            _ = adapterWithFocus.ResignFocus();
+        }
+    }
+
     protected override void DestroyNativeControlCore(IPlatformHandle control)
     {
         if (control is IWebViewAdapter adapter)

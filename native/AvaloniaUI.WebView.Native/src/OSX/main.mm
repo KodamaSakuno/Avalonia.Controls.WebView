@@ -215,6 +215,27 @@ public:
             return false;
         }
     }
+
+    virtual bool ResignFocus() override
+    {
+        START_COM_CALL;
+        
+        @autoreleasepool
+        {
+            auto window = [_webView window];
+            if (window)
+            {
+                auto firstResponder = [window firstResponder];
+                if (firstResponder == _webView)
+                {
+                    [window selectNextKeyView:nil];
+                    auto newFirstResponder = [window firstResponder];
+                    return newFirstResponder != firstResponder;
+                }
+            }
+            return false;
+        }
+    }
 };
 
 @implementation AvaloniaWKWebView

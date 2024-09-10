@@ -118,6 +118,7 @@ internal sealed class NativeWebViewAdapter : IWebViewAdapterWithFocus, IWebViewA
     }
 
     public bool Focus() => _nativeWebView.Focus() == 1;
+    public bool ResignFocus() => _nativeWebView.ResignFocus() == 1;
 
     private void OnScriptResult(int id, bool isError, string? result)
     {

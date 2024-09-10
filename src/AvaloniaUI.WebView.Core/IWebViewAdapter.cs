@@ -134,6 +134,7 @@ internal interface IWebViewAdapter : IWebView, IDisposable, IPlatformHandle
 internal interface IWebViewAdapterWithFocus : IWebViewAdapter
 {
     bool Focus();
+    bool ResignFocus();
     event EventHandler? GotFocus;
     event EventHandler? LostFocus;
 }
