@@ -255,7 +255,8 @@ public:
     {
         SEL selector = NULL;
         auto isCommandFlag = (modifier & NSEventModifierFlagCommand) != 0;
-        
+        auto isShiftFlag = (modifier & NSEventModifierFlagShift) != 0;
+
         if (isCommandFlag) {
             if ([chars isEqualToString:@"c"]) {
                 selector = @selector(copy:);
@@ -265,6 +266,13 @@ public:
                 selector = @selector(cut:);
             } else if ([chars isEqualToString:@"a"]) {
                 selector = @selector(selectAll:);
+                // why charactersIgnoringModifiers didn't ignore modifiers?
+            } else if (([chars isEqualToString:@"z"] || [chars isEqualToString:@"Z"]) && isShiftFlag) {
+                [[self undoManager] redo];
+                return true;
+            } else if ([chars isEqualToString:@"z"]) {
+                [[self undoManager] undo];
+                return true;
             }
         }
 
