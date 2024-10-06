@@ -45,4 +45,15 @@ internal class WKWebViewConfiguration : NSObject
         _handlers.Clear();
         base.Dispose(disposing);
     }
+
+    public void EnableDeveloperExtras()
+    {
+        var preferences = Libobjc.intptr_objc_msgSend(Handle, Libobjc.sel_getUid("preferences"));
+        using var key = NSString.Create("developerExtrasEnabled");
+        Libobjc.void_objc_msgSend(
+            preferences,
+            Libobjc.sel_getUid("setValue:forKey:"),
+            NSNumber.Yes.Handle,
+            key.Handle);
+    }
 }

@@ -3,6 +3,7 @@ using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using AppleInterop;
 using AppleInterop.WebKit;
+using Avalonia;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
@@ -24,42 +25,24 @@ public class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterWit
     public MaciosWebViewAdapter()
     {
         _scriptHandler = new WKScriptMessageHandler();
-        _scriptHandler.DidReceiveScriptMessage += (sender, args) =>
-        {
-            if (args.Name == PostAvWebViewMessageName)
-            {
-                WebMessageReceived?.Invoke(this, new WebMessageReceivedEventArgs { Body = args.Body });
-            }
-        };
+        _scriptHandler.DidReceiveScriptMessage += OnScriptHandlerOnDidReceiveScriptMessage;
 
         _config = new WKWebViewConfiguration { JavaScriptEnabled = true };
         _config.AddScriptMessageHandler(_scriptHandler, PostAvWebViewMessageName);
 
-        _navDelegate = new WKNavigationDelegate();
-        _navDelegate.DidFinishNavigation += async (sender, args) =>
+        if (AvaloniaLocator.Current.GetService<WebViewOptions>()?.EnableDevTools == true)
         {
-            _ = await InvokeScript(
-                $"function invokeCSharpAction(data){{window.webkit.messageHandlers.{PostAvWebViewMessageName}.postMessage(data);}}");
+            _config.EnableDeveloperExtras();
+        }
 
-            using var url = _webView!.Url;
-            NavigationCompleted?.Invoke(this,
-                new WebViewNavigationCompletedEventArgs
-                {
-                    Request = Uri.TryCreate(url.AbsoluteString, UriKind.Absolute, out var uri) ? uri : null,
-                    IsSuccess = true
-                });
-        };
-        _navDelegate.DecidePolicyNavigation += (_, args) =>
-        {
-            var startedArgs = new WebViewNavigationStartingEventArgs { Request = args.Request };
-            NavigationStarted?.Invoke(this, startedArgs);
-            args.Cancel = startedArgs.Cancel;
-        };
+        _navDelegate = new WKNavigationDelegate();
+        _navDelegate.DidFinishNavigation += OnDelegateOnDidFinishNavigation;
+        _navDelegate.DecidePolicyNavigation += OnDelegateOnDecidePolicyNavigation;
 
         _webView = new WKWebView(_config) { NavigationDelegate = _navDelegate };
         _webView.PerformKeyEquivalent += WebViewOnPerformKeyEquivalent;
         _webView.BecomeFirstResponder += (_, _) => GotFocus?.Invoke(this, EventArgs.Empty);
-        _webView.ResignFirstResponder += (_, _) => LostFocus?.Invoke(this, EventArgs.Empty); 
+        _webView.ResignFirstResponder += (_, _) => LostFocus?.Invoke(this, EventArgs.Empty);
     }
 
     public IntPtr Handle => _webView.Handle;
@@ -143,6 +126,29 @@ public class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterWit
     public bool ResignFocus()
     {
         return OperatingSystemEx.IsMacOS() && _webView.RemoveFirstResponder();
+    }
+
+    private void OnScriptHandlerOnDidReceiveScriptMessage(object sender, WKScriptMessageHandler.ScriptMessageEventArgs args)
+    {
+        if (args.Name == PostAvWebViewMessageName)
+        {
+            WebMessageReceived?.Invoke(this, new WebMessageReceivedEventArgs { Body = args.Body });
+        }
+    }
+
+    private void OnDelegateOnDecidePolicyNavigation(object _, WKNavigationDelegate.DecidePolicyNavigationEventArgs args)
+    {
+        var startedArgs = new WebViewNavigationStartingEventArgs { Request = args.Request };
+        NavigationStarted?.Invoke(this, startedArgs);
+        args.Cancel = startedArgs.Cancel;
+    }
+
+    private async void OnDelegateOnDidFinishNavigation(object sender, EventArgs args)
+    {
+        _ = await InvokeScript($"function invokeCSharpAction(data){{window.webkit.messageHandlers.{PostAvWebViewMessageName}.postMessage(data);}}");
+
+        using var url = _webView!.Url;
+        NavigationCompleted?.Invoke(this, new WebViewNavigationCompletedEventArgs { Request = Uri.TryCreate(url.AbsoluteString, UriKind.Absolute, out var uri) ? uri : null, IsSuccess = true });
     }
 
     private void WebViewOnPerformKeyEquivalent(object? sender, AppleView.PerformKeyEquivalentEventArgs e)
