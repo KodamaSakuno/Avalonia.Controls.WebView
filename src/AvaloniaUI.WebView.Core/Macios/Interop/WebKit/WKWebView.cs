@@ -28,6 +28,7 @@ internal class WKWebView : AppleView
     private static readonly IntPtr s_callAsyncJavaScript = Libobjc.sel_getUid("callAsyncJavaScript:arguments:inFrame:inContentWorld:completionHandler:");
 
     private static readonly unsafe IntPtr s_evaluateScriptCallback = new((delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, void>)&EvaluateScriptCallback);
+    private static readonly unsafe IntPtr s_callAsyncJavaScriptCallback = new((delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, void>)&CallAsyncJavaScriptCallback);
 
     static unsafe WKWebView()
     {
@@ -80,60 +81,101 @@ internal class WKWebView : AppleView
         return result;
     }
 
-    public async Task<IntPtr> EvaluateJavaScriptAsync(string script)
+    public async Task<string?> EvaluateJavaScriptAsync(string script)
     {
-        var tcs = new TaskCompletionSource<IntPtr>();
-        var tcsHandle = GCHandle.Alloc(tcs);
+        var tcs = new TaskCompletionSource<string?>();
+        var state = new JSCallState(Handle, tcs);
+        var stateHandle = GCHandle.Alloc(state);
         try
         {
             var scriptStr = NSString.Create(script);
             GC.SuppressFinalize(scriptStr);
-            var block = BlockLiteral.GetBlockForFunctionPointer(s_evaluateScriptCallback, GCHandle.ToIntPtr(tcsHandle));
+            var block = BlockLiteral.GetBlockForFunctionPointer(s_evaluateScriptCallback, GCHandle.ToIntPtr(stateHandle));
             Libobjc.void_objc_msgSend(Handle, s_evaluateJavaScript, scriptStr.Handle, block);
             return await tcs.Task;
         }
         finally
         {
-            tcsHandle.Free();
+            stateHandle.Free();
         }
     }
 
-    public async Task<IntPtr> CallAsyncJavaScriptAsync(
-        string functionBody,
-        NSDictionary arguments,
-        IntPtr frame,
-        IntPtr contentWorld)
+    internal static async Task PtrResultToString(IntPtr result, JSCallState state)
     {
-        var tcs = new TaskCompletionSource<IntPtr>();
-        var tcsHandle = GCHandle.Alloc(tcs);
+        if (result == default)
+        {
+            _ = state.CompletionSource.TrySetResult(null);
+            return;
+        }
+
         try
         {
-            var functionBodyStr = NSString.Create(functionBody);
-            GC.SuppressFinalize(functionBodyStr);
-            var block = BlockLiteral.GetBlockForFunctionPointer(s_evaluateScriptCallback, GCHandle.ToIntPtr(tcsHandle));
-            Libobjc.void_objc_msgSend(Handle, s_callAsyncJavaScript,
-                functionBodyStr.Handle, arguments.Handle, frame, contentWorld, block);
-            return await tcs.Task;
+            if (NSString.TryGetString(result) is { } str)
+            {
+                _ = state.CompletionSource.TrySetResult(str);
+                return;
+            }
+
+            using var argNameStr = NSString.Create("arg");
+            using var args = NSDictionary.WithObjects(
+                [result],
+                [argNameStr.Handle],
+                1);
+            using var functionBodyStr = NSString.Create("return JSON.stringify(arg);");
+
+            var stateHandle = GCHandle.Alloc(state);
+            try
+            {
+                var block = BlockLiteral.GetBlockForFunctionPointer(s_callAsyncJavaScriptCallback,
+                    GCHandle.ToIntPtr(stateHandle));
+                Libobjc.void_objc_msgSend(state.WebView, s_callAsyncJavaScript,
+                    functionBodyStr.Handle, args.Handle, default, WKContentWorld.DefaultClientWorld, block);
+                _ = await state.CompletionSource.Task;
+            }
+            finally
+            {
+                stateHandle.Free();
+            }
         }
-        finally
+        catch (Exception ex)
         {
-            tcsHandle.Free();
+            _ = state.CompletionSource.TrySetException(ex);
         }
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static void EvaluateScriptCallback(IntPtr block, IntPtr value, IntPtr nsError)
     {
-        var state = BlockLiteral.TryGetBlockState(block);
-        var tcs = GCHandle.FromIntPtr(state).Target as TaskCompletionSource<IntPtr>;
+        var statePtr = BlockLiteral.TryGetBlockState(block);
+        if (GCHandle.FromIntPtr(statePtr).Target is not JSCallState state)
+            return;
 
         if (nsError != default)
         {
-            _ = tcs?.TrySetException(NSError.ToException(nsError));
+            _ = state.CompletionSource.TrySetException(NSError.ToException(nsError));
         }
         else
         {
-            _ = tcs?.TrySetResult(value);
+            _ = PtrResultToString(value, state);
         }
     }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    private static void CallAsyncJavaScriptCallback(IntPtr block, IntPtr value, IntPtr nsError)
+    {
+        var statePtr = BlockLiteral.TryGetBlockState(block);
+        if (GCHandle.FromIntPtr(statePtr).Target is not JSCallState state)
+            return;
+
+        if (nsError != default)
+        {
+            _ = state.CompletionSource.TrySetException(NSError.ToException(nsError));
+        }
+        else
+        {
+            _ = state.CompletionSource.TrySetResult(NSString.TryGetString(value));
+        }
+    }
+
+    internal record JSCallState(IntPtr WebView, TaskCompletionSource<string?> CompletionSource);
 }

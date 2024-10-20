@@ -22,8 +22,6 @@ internal static unsafe partial class Libobjc
 
     [LibraryImport(libobjc, StringMarshalling = StringMarshalling.Utf8)]
     public static partial IntPtr objc_getClass(string className);
-    [LibraryImport(libobjc)]
-    public static partial IntPtr object_getClass(IntPtr id);
     [LibraryImport(libobjc, StringMarshalling = StringMarshalling.Utf8)]
     public static partial IntPtr objc_getMetaClass(string className);
     [LibraryImport(libobjc, StringMarshalling = StringMarshalling.Utf8)]
@@ -54,8 +52,6 @@ internal static unsafe partial class Libobjc
 
     [DllImport(libobjc, CharSet = CharSet.Ansi)]
     public static extern IntPtr objc_getClass(string className);
-    [DllImport(libobjc)]
-    public static extern IntPtr object_getClass(IntPtr id);
     [DllImport(libobjc, CharSet = CharSet.Ansi)]
     public static extern IntPtr objc_getMetaClass(string className);
     [DllImport(libobjc, CharSet = CharSet.Ansi)]
@@ -78,6 +74,10 @@ internal static unsafe partial class Libobjc
 
     [DllImport(libobjc)]
     public static extern IntPtr class_getSuperclass(IntPtr thisClass);
+    [DllImport(libobjc)]
+    public static extern IntPtr object_getClass(IntPtr id);
+    [DllImport(libobjc)]
+    public static extern IntPtr class_getName(IntPtr handle);
 
     [DllImport(libobjc)]
     public static extern void objc_registerClassPair(IntPtr superclass);

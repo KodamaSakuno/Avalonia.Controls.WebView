@@ -16,6 +16,7 @@ internal abstract class NSObject : IDisposable, IEquatable<NSObject>
     private static readonly IntPtr s_autoreleaseSel = Libobjc.sel_getUid("autorelease");
     private static readonly IntPtr s_retainCountSel = Libobjc.sel_getUid("retainCount");
     private static readonly IntPtr s_conformsToProtocol = Libobjc.sel_getUid("conformsToProtocol:");
+    private static readonly IntPtr s_respondsToSelector = Libobjc.sel_getUid("respondsToSelector:");
 
     private bool _owns;
     private readonly IntPtr _class;
@@ -61,6 +62,11 @@ internal abstract class NSObject : IDisposable, IEquatable<NSObject>
     public static bool ConformsToProtocol(IntPtr handle, IntPtr protocolHandle)
     {
         return Libobjc.int_objc_msgSend(handle, s_conformsToProtocol, protocolHandle) == 1;
+    }
+
+    public static bool RespondsToSelector(IntPtr handle, IntPtr selectorHandle)
+    {
+        return Libobjc.int_objc_msgSend(handle, s_respondsToSelector, selectorHandle) == 1;
     }
 
     protected unsafe bool SetIvarValue(string varName, IntPtr value)

@@ -36,6 +36,13 @@ internal class NSString : NSObject
 
     public string? GetString() => GetString(Handle);
 
+    public static string? TryGetString(IntPtr handle)
+    {
+        if (RespondsToSelector(handle, s_getUTF8String))
+            return GetString(handle);
+        return null;
+    }
+
     public static string? GetString(IntPtr handle)
     {
         var utf8 = Libobjc.intptr_objc_msgSend(handle, s_getUTF8String);

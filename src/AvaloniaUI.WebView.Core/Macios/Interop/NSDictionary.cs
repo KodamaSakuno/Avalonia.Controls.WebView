@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 
 namespace AppleInterop;
 
@@ -45,4 +46,36 @@ internal class NSDictionary : NSObject
             return new NSDictionary(handle, true);
         }
     }
+
+    public static unsafe Dictionary<string, string?> AsStringDictionary(IntPtr handle)
+    {
+        var dictionary = new Dictionary<string, string?>();
+
+        var count = CFDictionaryGetCount(handle);
+        if (count > 0)
+        {
+            var keys = new IntPtr[count];
+            var values = new IntPtr[count];
+            fixed (IntPtr* keysPtr = keys)
+            fixed (IntPtr* valuesPtr = values)
+            {
+                CFDictionaryGetKeysAndValues(handle, keysPtr, valuesPtr);
+            }
+
+            for (var i = 0; i < count; i++)
+            {
+                var str = NSString.GetString(keys[i])!;
+                var value = NSString.TryGetString(values[i]) ?? NSNumber.TryAsStringValue(values[i]);
+                dictionary.Add(str, value);
+            }
+        }
+
+        return dictionary;
+    }
+
+    private const string CoreFoundationLibrary = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
+    [DllImport(CoreFoundationLibrary)]
+    private static extern long CFDictionaryGetCount(IntPtr dict);
+    [DllImport(CoreFoundationLibrary)]
+    private static extern unsafe void CFDictionaryGetKeysAndValues(IntPtr dict, IntPtr* keys, IntPtr* values);
 }

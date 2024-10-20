@@ -22,8 +22,14 @@ public partial class MainView : UserControl
 
         await ((NativeWebView)sender!).InvokeScript(""" invokeCSharpAction({'key': 10}) """);
 
-        var result = await ((NativeWebView)sender!).InvokeScript("""var a = 1; var b = 2; a + b""");
-        LogList.Text += "\r\nFrom javascript: 1 + 2 is " + result;
+        var webView = (NativeWebView)sender;
+        await webView.InvokeScript("1+1");
+        await webView.InvokeScript("'test'");
+        await webView.InvokeScript("var x = 123; x");
+        await webView.InvokeScript("var x = 'test'; x");
+        await webView.InvokeScript("'te\"st'");
+        await webView.InvokeScript("'te()st'");
+        await webView.InvokeScript("document.body.innerHTML");
     }
 
     private void NativeWebView_OnNavigationStarted(object? sender, WebViewNavigationStartingEventArgs e)
