@@ -11,11 +11,7 @@ internal class WebViewHelper
     public static bool IsMsWebView2Available => s_isMsWebView2Available ??= IsMsWebView2AvailableInternal();
 
     public static bool IsMsWebView1Available =>
-#if NETFRAMEWORK
-        false;
-#else
         false; // OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17134);
-#endif
 
     private static bool IsMsWebView2AvailableInternal()
     {

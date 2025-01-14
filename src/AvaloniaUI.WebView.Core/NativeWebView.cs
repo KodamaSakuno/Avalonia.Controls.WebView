@@ -128,13 +128,11 @@ public class NativeWebView : NativeControlHost, IWebView
 
         IWebViewAdapter? adapter = null;
 
-#if !NETFRAMEWORK
         if (OperatingSystemEx.IsMacOS() || OperatingSystemEx.IsIOS())
         {
             adapter = new MaciosWebViewAdapter();
         }
         else
-#endif
         // if (OperatingSystemEx.IsLinux())
         // {
         //     new Gtk.GtkWebView2Adapter();
