@@ -1,6 +1,5 @@
 ﻿#if AVALONIA || WPF
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
 using AvInput = Avalonia.Input;
@@ -11,6 +10,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using System.Windows.Controls;
+using System.Diagnostics.CodeAnalysis;
 #elif AVALONIA
 using Avalonia;
 using Avalonia.Controls;

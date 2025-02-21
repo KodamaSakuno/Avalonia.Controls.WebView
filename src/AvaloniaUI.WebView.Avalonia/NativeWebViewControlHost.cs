@@ -46,13 +46,11 @@ internal class NativeWebViewControlHost : NativeControlHost
             adapter = new MaciosWebViewAdapter();
         }
         else
-        // if (OperatingSystemEx.IsLinux())
-        // {
-        //     new Gtk.GtkWebView2Adapter();
-        //
-        //     return base.CreateNativeControlCore(parent);
-        //     // adapter = new Gtk.GtkWebView2Adapter();
-        // } else
+        if (OperatingSystemEx.IsLinux())
+        {
+            adapter = new Gtk.GtkWebViewAdapter();
+        }
+        else
         // if (OperatingSystemEx.IsBrowser())
         // {
         //     adapter = new BrowserIFrameAdapter();

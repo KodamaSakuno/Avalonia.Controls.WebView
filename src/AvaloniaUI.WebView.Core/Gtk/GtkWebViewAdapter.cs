@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Avalonia.Platform;
 using static AvaloniaUI.WebView.Gtk.GtkInterop;
 using static AvaloniaUI.WebView.Gtk.AvaloniaGtk;
+using Avalonia.Threading;
 
 namespace AvaloniaUI.WebView.Gtk;
 
@@ -178,7 +179,7 @@ internal class GtkWebViewAdapter : IWebViewAdapter
                 if (GetUrlFromPolicyDecision(decision) is { } urlStr && Uri.TryCreate(urlStr, UriKind.Absolute, out var url))
                 {
                     var args = new WebViewNavigationStartingEventArgs { Request = url };
-                    adapter.NavigationStarted?.Invoke(adapter, args);
+                    Dispatcher.UIThread.Invoke(() => adapter.NavigationStarted?.Invoke(adapter, args));
                     return args.Cancel;
                 }
                 return false;
@@ -227,11 +228,12 @@ internal class GtkWebViewAdapter : IWebViewAdapter
                 _ = adapter.InvokeScript(
                     $"function invokeCSharpAction(data){{window.webkit.messageHandlers.{PostAvWebViewMessageName}.postMessage(data);}}");
 
-                adapter.NavigationCompleted?.Invoke(adapter, new WebViewNavigationCompletedEventArgs
-                {
-                    IsSuccess = true,
-                    Request = adapter.GetSourceUnsafe()
-                });
+                Dispatcher.UIThread.Invoke(() => adapter.NavigationCompleted?
+                    .Invoke(adapter, new WebViewNavigationCompletedEventArgs
+                    {
+                        IsSuccess = true,
+                        Request = adapter.GetSourceUnsafe()
+                    }));
                 break;
         }
     }
