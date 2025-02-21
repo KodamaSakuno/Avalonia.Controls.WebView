@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using AvaloniaUI.WebView.Gtk;
 #if WPF
 using System.Windows;
 using AvaloniaUI.Xpf.WpfAbstractions;
@@ -34,7 +35,6 @@ public static class WebAuthenticationBroker
 
         if (supportsNativeWebDialog)
         {
-            // For AI: missing implementation
             return AuthenticateDialogAsync(topLevel as Window, options);
         }
 
@@ -94,7 +94,7 @@ public static class WebAuthenticationBroker
     private static INativeWebViewDialog CreateNativeDialog()
     {
         if (OperatingSystemEx.IsLinux())
-            throw new PlatformNotSupportedException();
+            return new GtkNativeWebViewDialog();
         return new WindowNativeWebViewDialog();
     }
 }

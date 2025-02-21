@@ -8,7 +8,7 @@ using Avalonia.Controls;
 
 namespace AvaloniaUI.WebView;
 
-public class WindowNativeWebViewDialog : Window, INativeWebViewDialog
+internal class WindowNativeWebViewDialog : Window, INativeWebViewDialog
 {
     private readonly NativeWebView _nativeWebView = new();
 
