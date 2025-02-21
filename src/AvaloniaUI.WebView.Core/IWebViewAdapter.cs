@@ -28,6 +28,13 @@ public class WebViewNavigationStartingEventArgs : WebViewNavigationEventArgs
     public bool Cancel { get; set; }
 }
 
+internal interface INativeWebViewDialog : IWebView, IDisposable
+{
+    string? Title { get; set; }
+    void Show();
+    void Close();
+}
+
 internal interface IWebView
 {
     /// <summary>

@@ -19,11 +19,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 #endif
 
-#if AVALONIA
-namespace AvaloniaUI.WebView.Avalonia;
-#elif WPF
-namespace AvaloniaUI.WebView.Wpf;
-#endif
+namespace AvaloniaUI.WebView;
 
 public class NativeWebView : Control, IWebView
 {

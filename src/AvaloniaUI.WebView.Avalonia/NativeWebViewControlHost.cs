@@ -13,11 +13,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 #endif
 
-#if AVALONIA
-namespace AvaloniaUI.WebView.Avalonia;
-#elif WPF
-namespace AvaloniaUI.WebView.Wpf;
-#endif
+namespace AvaloniaUI.WebView;
 
 internal class NativeWebViewControlHost : NativeControlHost
 {
