@@ -2,7 +2,7 @@ name: CICD
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "release" ]
     tags:
       - '*'
 
@@ -19,6 +19,10 @@ jobs:
     - name: CreateNugetPackages
       run: dotnet run --project ${{github.workspace}}/build/_build.csproj --target CreateNugetPackages --configuration Release --output ${{github.workspace}}/artifacts/packages/
 
-    - name: Publish
+    - name: Publish nightly
       if: github.ref == 'refs/heads/main'
       run: dotnet nuget push ${{github.workspace}}/artifacts/**/*.nupkg  --api-key ${{secrets.baget_api_key}} --source ${{ vars.BAGET_API_URL }}
+
+    - name: Publish release
+      if: github.ref == 'refs/heads/release'
+      run: dotnet nuget push ${{github.workspace}}/artifacts/**/*.nupkg  --api-key ${{secrets.PROPACK_FEED_API_KEY}} --source ${{ vars.PROPACK_FEED_UPLOAD_URL }}
