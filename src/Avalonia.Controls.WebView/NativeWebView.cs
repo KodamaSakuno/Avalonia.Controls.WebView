@@ -375,7 +375,7 @@ namespace Avalonia.Xpf.Controls
                     null);
             if (members?.Length == 1)
             {
-                return (Func<System.Windows.Media.Visual?, object?>)Delegate.CreateDelegate(typeof(Func<Visual?, object?>), null, (MethodInfo)members[0]);
+                return (Func<System.Windows.Media.Visual?, object?>)Delegate.CreateDelegate(typeof(Func<System.Windows.Media.Visual?, object?>), null, (MethodInfo)members[0]);
             }
             return _ => null;
         }

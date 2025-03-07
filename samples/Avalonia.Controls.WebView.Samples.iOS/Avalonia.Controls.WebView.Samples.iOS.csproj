@@ -15,8 +15,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AvaloniaUI.WebView.Avalonia.Samples\AvaloniaUI.WebView.Avalonia.Samples.csproj" />
+    <ProjectReference Include="..\Avalonia.Controls.WebView.Samples\Avalonia.Controls.WebView.Samples.csproj" />
   </ItemGroup>
 
-  <Import Project="../../src/AvaloniaUI.WebView.Core/AvaloniaUI.WebView.Core.targets" />
+  <Import Project="../../src/Avalonia.Controls.WebView.Core/Avalonia.Controls.WebView.Core.targets" />
 </Project>

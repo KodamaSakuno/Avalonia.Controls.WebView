@@ -2,7 +2,7 @@ using Avalonia;
 using System;
 using Avalonia.Controls;
 
-namespace AvaloniaUI.WebView.Avalonia.Samples;
+namespace Avalonia.Controls.WebView.Samples.Desktop;
 
 internal class Program
 {

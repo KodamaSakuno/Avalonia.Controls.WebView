@@ -19,6 +19,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\AvaloniaUI.WebView.Avalonia.Samples\AvaloniaUI.WebView.Avalonia.Samples.csproj" />
+    <ProjectReference Include="..\Avalonia.Controls.WebView.Samples\Avalonia.Controls.WebView.Samples.csproj" />
   </ItemGroup>
 </Project>

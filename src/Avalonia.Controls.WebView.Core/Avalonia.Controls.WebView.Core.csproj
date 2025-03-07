@@ -62,5 +62,5 @@
                        Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net7.0'))" />
   </ItemGroup>
 
-  <Import Project="AvaloniaUI.WebView.Core.targets" />
+  <Import Project="Avalonia.Controls.WebView.Core.targets" />
 </Project>

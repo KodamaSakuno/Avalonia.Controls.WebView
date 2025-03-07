@@ -2,7 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
-namespace AvaloniaUI.WebView.Avalonia.Samples;
+namespace Avalonia.Controls.WebView.Samples;
 
 public class App : Application
 {

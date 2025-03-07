@@ -1,6 +1,6 @@
 using UIKit;
 
-namespace AvaloniaUI.WebView.Avalonia.Samples.iOS;
+namespace Avalonia.Controls.WebView.Samples.iOS;
 
 public class Application
 {

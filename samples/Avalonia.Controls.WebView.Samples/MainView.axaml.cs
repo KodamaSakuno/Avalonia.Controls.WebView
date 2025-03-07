@@ -5,7 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 
-namespace AvaloniaUI.WebView.Avalonia.Samples;
+namespace Avalonia.Controls.WebView.Samples;
 
 public partial class MainView : UserControl
 {

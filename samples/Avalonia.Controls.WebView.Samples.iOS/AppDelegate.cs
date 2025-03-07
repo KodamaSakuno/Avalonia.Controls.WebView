@@ -3,7 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.iOS;
 
-namespace AvaloniaUI.WebView.Avalonia.Samples.iOS;
+namespace Avalonia.Controls.WebView.Samples.iOS;
 
 // The UIApplicationDelegate for the application. This class is responsible for launching the 
 // User Interface of the application, as well as listening (and optionally responding) to 

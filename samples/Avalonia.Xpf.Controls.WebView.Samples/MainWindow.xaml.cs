@@ -1,14 +1,12 @@
 ﻿using System.Runtime.InteropServices;
 using System.Windows.Input;
 using System.Windows.Interop;
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Xpf.Controls;
 using AvaloniaUI.Xpf.WpfAbstractions;
 using TabItem = System.Windows.Controls.TabItem;
 using Window = System.Windows.Window;
 
-namespace AvaloniaUI.WebView.Wpf.Samples
+namespace Avalonia.Xpf.Controls.WebView.Samples
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml

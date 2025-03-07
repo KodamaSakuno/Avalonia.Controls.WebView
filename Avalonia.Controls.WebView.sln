@@ -17,7 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{DDB4
 		samples\NuGet.config = samples\NuGet.config
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AvaloniaUI.WebView.Avalonia.Samples", "samples\AvaloniaUI.WebView.Avalonia.Samples\AvaloniaUI.WebView.Avalonia.Samples.csproj", "{841EE8C2-7408-40A3-B136-333C94F4F506}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Avalonia.Controls.WebView.Samples", "samples\Avalonia.Controls.WebView.Samples\Avalonia.Controls.WebView.Samples.csproj", "{841EE8C2-7408-40A3-B136-333C94F4F506}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "_build", "build\_build.csproj", "{1B7D1386-5EF1-402A-B09C-135302BA3B9B}"
 EndProject
@@ -25,15 +25,15 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Avalonia.Controls.WebView.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Avalonia.Xpf.Controls.WebView", "src\Avalonia.Xpf.Controls.WebView\Avalonia.Xpf.Controls.WebView.csproj", "{DCB2CBB3-78DB-470F-8DF6-C2BC00772F5D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvaloniaUI.WebView.Wpf.Samples", "samples\AvaloniaUI.WebView.Wpf.Samples\AvaloniaUI.WebView.Wpf.Samples.csproj", "{34EFE064-BF8D-4380-B3E8-6B7FF46C2421}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Avalonia.Xpf.Controls.WebView.Samples", "samples\Avalonia.Xpf.Controls.WebView.Samples\Avalonia.Xpf.Controls.WebView.Samples.csproj", "{34EFE064-BF8D-4380-B3E8-6B7FF46C2421}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WebView", "WebView", "{56C66E2C-AFED-48A1-B738-B63E241DCDB2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NativeWebViewTest", "samples\NativeWebViewTest\NativeWebViewTest.csproj", "{CDC9E189-A8BE-4F29-8F85-21A4E358ADDD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvaloniaUI.WebView.Avalonia.Samples.Desktop", "samples\AvaloniaUI.WebView.Avalonia.Samples.Desktop\AvaloniaUI.WebView.Avalonia.Samples.Desktop.csproj", "{8C53D64F-EDF9-44B8-AFCE-755D740B0BC5}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Avalonia.Controls.WebView.Samples.Desktop", "samples\Avalonia.Controls.WebView.Samples.Desktop\Avalonia.Controls.WebView.Samples.Desktop.csproj", "{8C53D64F-EDF9-44B8-AFCE-755D740B0BC5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AvaloniaUI.WebView.Avalonia.Samples.iOS", "samples\AvaloniaUI.WebView.Avalonia.Samples.iOS\AvaloniaUI.WebView.Avalonia.Samples.iOS.csproj", "{D2E727CB-5348-4951-882F-40A14B431896}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Avalonia.Controls.WebView.Samples.iOS", "samples\Avalonia.Controls.WebView.Samples.iOS\Avalonia.Controls.WebView.Samples.iOS.csproj", "{D2E727CB-5348-4951-882F-40A14B431896}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
