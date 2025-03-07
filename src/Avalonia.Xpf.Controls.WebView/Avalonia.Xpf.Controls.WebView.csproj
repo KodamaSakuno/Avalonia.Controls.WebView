@@ -4,7 +4,7 @@
     <TargetFrameworks>net462;net6.0-windows</TargetFrameworks>
     <UseWpf>true</UseWpf>
     <DefineConstants>$(DefineConstants);WPF</DefineConstants>
-    <IsPackable>true</IsPackable>
+    <!-- <IsPackable>true</IsPackable> -->
     <RootNamespace>Avalonia.Xpf.Controls</RootNamespace>
   </PropertyGroup>
 
