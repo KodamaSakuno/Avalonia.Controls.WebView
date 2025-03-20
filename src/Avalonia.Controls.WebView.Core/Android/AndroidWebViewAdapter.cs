@@ -123,8 +123,6 @@ internal class AndroidWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapter
 
     public void Dispose()
     {
-        _webView.StopLoading();
-        _webView.ClearHistory();
         _webView.RemoveJavascriptInterface(PostAvWebViewMessageName);
         _webView.Dispose();
     }
