@@ -75,6 +75,11 @@ namespace Avalonia.Xpf.Controls
                 //    adapter = new Core.Win.WebBrowserAdapter();
                 // }
             }
+#elif ANDROID
+            if (OperatingSystem.IsAndroid())
+            {
+                return new Android.AndroidWebViewAdapter(parent);
+            }
 #endif
             if (adapter is null)
             {
