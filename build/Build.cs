@@ -74,7 +74,7 @@ class Build : NukeBuild
         {
             return RefName;
         }
-        else if (Regex.Match(RefName, """release\/(?<ver>[\d\.]*)""") is { Success: true } match)
+        else if (Regex.Match(RefName ?? "", """release\/(?<ver>[\d\.]*)""") is { Success: true } match)
         {
             return match.Groups["ver"].Value;
         }
