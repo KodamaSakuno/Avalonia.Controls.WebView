@@ -6,10 +6,11 @@
     <DefineConstants>$(DefineConstants);WPF</DefineConstants>
     <!-- <IsPackable>true</IsPackable> -->
     <RootNamespace>Avalonia.Xpf.Controls</RootNamespace>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Avalonia.Controls.WebView.Core\Avalonia.Controls.WebView.Core.csproj" />
+    <ProjectReference Include="..\Avalonia.Controls.WebView.Core\Avalonia.Controls.WebView.Core.csproj" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

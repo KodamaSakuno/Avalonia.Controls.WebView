@@ -16,43 +16,19 @@
     <Avalonia_I_Want_To_Use_Private_Apis_In_Nuget_Package_And_Promise_To_Pin_The_Exact_Avalonia_Version_In_Package_Dependency>true</Avalonia_I_Want_To_Use_Private_Apis_In_Nuget_Package_And_Promise_To_Pin_The_Exact_Avalonia_Version_In_Package_Dependency>
     <AvaloniaAccessUnstablePrivateApis>true</AvaloniaAccessUnstablePrivateApis>
     <_WebViewBuildTime>$([System.DateTime]::Now.ToString('yyyy-MM-dd'))</_WebViewBuildTime>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
-  <!-- Common group -->
   <ItemGroup>
-    <PackageReference Include="AvaloniaUI.Licensing" Version="2.0.0-cibuild000063" />
+    <AdditionalFiles Include="**/*.mcidl" />
     <PackageReference Include="MicroCom.CodeGenerator.Roslyn" Version="0.11.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Avalonia" Version="$(AvaloniaVersion)" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="6.0.0" Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'net462'" />
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.106">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-  </ItemGroup>
-
-  <ItemGroup Condition=" '$(TargetPlatformIdentifier)' == 'android' ">
-    <PackageReference Include="Avalonia.Android" Version="$(AvaloniaVersion)" />
-    <PackageReference Include="Xamarin.AndroidX.Browser" Version="1.8.0.8" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'net462'">
-    <PackageReference Include="System.Memory" Version="4.5.5" />
-    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
-  </ItemGroup>
-
-  <!-- Windows only group -->
-  <ItemGroup>
-    <Compile Remove="Win/**/*.cs" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.1901.177" />
-    <Compile Include="Win/**/*.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <AdditionalFiles Include="**/*.mcidl" />
   </ItemGroup>
 
   <ItemGroup>
@@ -66,15 +42,8 @@
     </AssemblyAttribute>
   </ItemGroup>
 
-  <ItemGroup>
-    <Content Update="staticwebassets\av-webview.mjs">
-      <Pack>true</Pack>
-      <PackagePath>staticwebassets/</PackagePath>
-    </Content>
-  </ItemGroup>
-
+  <Import Project="../Avalonia.Controls.WebView.Core/IncludeBuildItems.props" />
   <Import Project="IncludeBuildItems.props" />
-  <Import Project="$(RepositoryPropsRoot)/PackEnable.targets" />
   <Import Project="$(RepositoryPropsRoot)/NullableEnable.targets" />
   <Import Project="$(RepositoryPropsRoot)/PolyfillEnable.targets" />
   <Import Project="$(RepositoryPropsRoot)/SignEnable.targets" />

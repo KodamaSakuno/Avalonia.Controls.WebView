@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using MicroCom.CodeGenerator;
 using NuGet.Configuration;
+using NuGet.Versioning;
 using Nuke.Common;
 using Nuke.Common.IO;
 using Nuke.Common.Tooling;
@@ -65,6 +67,47 @@ class Build : NukeBuild
                     .SetVersion(GetVersion())
                     .SetConfiguration(Configuration)
                 );
+            }
+
+            var mergeRootProjects = srcRootDirectory.GlobFiles("**/*.csproj").Where(p =>
+                p.Name.Contains("Avalonia.Controls.WebView.csproj") ||
+                p.Name.Contains("Avalonia.Xpf.Controls.WebView"));
+
+            var libs = string.Join(' ', GetExtraDepLibs().Select(l => $"/lib:{l}"));
+
+            foreach (var mergeRootProject in mergeRootProjects)
+            {
+                var projectName = Path.GetFileNameWithoutExtension(mergeRootProject);
+                var mergeRootDlls = mergeRootProject.Parent
+                    .GlobFiles(Path.Combine("bin", Configuration, "**", projectName + ".dll"));
+                foreach (var mergeRootDll in mergeRootDlls)
+                {
+                    string[] depNamesToMerge = ["Avalonia.Controls.WebView.Core.dll"];
+                    var dependenciesToMerge = mergeRootDll.Parent
+                        .GlobFiles("*.dll")
+                        .Where(f => Array.IndexOf(depNamesToMerge, f.Name) >= 0);
+
+                    var dependenciesArg = string.Join(" ", dependenciesToMerge.Select(dll => '"' + dll + '"'));
+                    var signParams = "";// $"/keyfile:{RootDirectory / "build" / "avalonia.snk"}";
+
+                    IlRepackTool.Invoke(
+                        $"""/internalize /parallel /ndebug {libs:nq} {signParams} /out:"{mergeRootDll}" "{mergeRootDll}" {dependenciesArg} """,
+                        mergeRootDll.Parent);
+                }
+            }
+
+            static IEnumerable<string> GetExtraDepLibs()
+            {
+                // See https://github.com/gluck/il-repack/issues/399
+                var androidSdk = NuGetPackageResolver.GetGlobalInstalledPackage("Microsoft.Android.Ref.34",
+                    new VersionRange(new NuGetVersion(1, 0, 0)), null)?.Directory;
+                if (androidSdk is null)
+                {
+                    throw new DirectoryNotFoundException("Unable to find installed \"Microsoft.Android.Ref.34\" nuget package.");
+                }
+
+                var androidRefs = androidSdk / "ref" / "net8.0";
+                yield return androidRefs;
             }
         });
 
@@ -133,7 +176,7 @@ class Build : NukeBuild
 
     string GetVersion()
     {
-        if (ScheduledTargets.Any(t => t.Name == nameof(CopyDiagnosticsToNuGetCache)))
+        if (ScheduledTargets.Any(t => t.Name == nameof(CopyPackagesToNuGetCache)))
         {
             return "9999.0.0-localbuild";
         }
