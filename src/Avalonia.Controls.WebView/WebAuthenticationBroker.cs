@@ -36,7 +36,7 @@ namespace Avalonia.Xpf.Controls
             var supportsNativeWebDialog =
                 OperatingSystemEx.IsWindows() || OperatingSystemEx.IsLinux() || OperatingSystemEx.IsMacOS();
 
-            if (!(supportsNativeWebDialog & options.PreferNativeWebViewDialog)
+            if (!(supportsNativeWebDialog & options.PreferNativeWebDialog)
 #if WPF
                 && XpfWpfAbstraction.GetAvaloniaTopLevelForWindow(topLevel) is { } avTopLevel
 #elif AVALONIA
@@ -140,7 +140,7 @@ namespace Avalonia.Xpf.Controls
         /// <summary>
         /// If true, WebAuthenticationBroker will avoid platform specific implementation option, and will use webview dialog window.
         /// </summary>
-        public bool PreferNativeWebViewDialog { get; init; }
+        public bool PreferNativeWebDialog { get; init; }
     }
 
     /// <param name="CallbackUri">The response URI containing authentication data.</param>
