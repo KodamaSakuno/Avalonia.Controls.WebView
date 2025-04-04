@@ -1,0 +1,199 @@
+﻿@clr-namespace Avalonia.Controls.Win.RawWebView2
+@clr-access internal
+@clr-map FLOAT float
+@clr-map HSTRING IntPtr
+@clr-map Vector2 System.Numerics.Vector2
+@clr-map Vector3 System.Numerics.Vector3
+@clr-map HWND IntPtr
+@clr-map BOOL int
+@clr-map DWORD int
+@clr-map boolean int
+@clr-map BYTE byte
+@clr-map INT16 short
+@clr-map INT32 int
+@clr-map INT64 long
+@clr-map UINT ushort
+@clr-map UINT16 ushort
+@clr-map ULONG uint
+@clr-map UINT32 uint
+@clr-map UINT64 ulong
+@clr-map DOUBLE double
+@clr-map GUID System.Guid
+@clr-map REFGUID System.Guid*
+@clr-map REFIID System.Guid*
+@clr-map WCHAR System.Char
+@clr-map STGMEDIUM Avalonia.Win32.Interop.STGMEDIUM
+@clr-map FORMATETC Avalonia.Win32.Interop.FORMATETC
+@clr-map LPWSTR System.Char*
+@clr-map LPCWSTR System.Char*
+@clr-map EventRegistrationToken System.Int64
+@clr-map SIZE_T System.IntPtr
+
+struct tagRECT
+{
+  int left;
+  int top;
+  int right;
+  int bottom;
+}
+
+[uuid(2FDE08A8-1E9A-4766-8C05-95A9CEB9D1C5)]
+interface ICoreWebView2EnvironmentOptions : IUnknown
+{
+	HRESULT get_AdditionalBrowserArguments(LPWSTR* value);
+	HRESULT put_AdditionalBrowserArguments(LPCWSTR value);
+	HRESULT get_Language(LPWSTR* value);
+	HRESULT put_Language(LPCWSTR value);
+	HRESULT get_TargetCompatibleBrowserVersion(LPWSTR* value);
+	HRESULT put_TargetCompatibleBrowserVersion(LPCWSTR value);
+	HRESULT get_AllowSingleSignOnUsingOSPrimaryAccount(BOOL* allow);
+	HRESULT put_AllowSingleSignOnUsingOSPrimaryAccount(BOOL allow);
+}
+
+[uuid(4E8A3389-C9D8-4BD2-B6B5-124FEE6CC14D)]
+interface ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler
+{
+    HRESULT Invoke(HRESULT errorCode, ICoreWebView2Environment* result);
+}
+
+[uuid(B96D755E-0319-4E92-A296-23436F46A1FC)]
+interface ICoreWebView2Environment
+{
+    HRESULT CreateCoreWebView2Controller(HWND parentWindow, ICoreWebView2CreateCoreWebView2ControllerCompletedHandler* handler);
+    HRESULT CreateWebResourceResponse(void* content, int statusCode, LPCWSTR reasonPhrase, LPCWSTR headers, void** response);
+    HRESULT get_BrowserVersionString(LPWSTR * versionInfo);
+}
+
+[uuid(6C4819F3-C9B7-4260-8127-C9F5BDE7F68C)]
+interface ICoreWebView2CreateCoreWebView2ControllerCompletedHandler
+{
+    HRESULT Invoke(HRESULT errorCode, ICoreWebView2Controller * result);
+}
+
+[uuid(4D00C0D1-9434-4EB6-8078-8697A560334F)]
+interface ICoreWebView2Controller : IUnknown
+{
+    HRESULT get_IsVisible(BOOL* isVisible);
+    HRESULT put_IsVisible(BOOL isVisible);
+    HRESULT get_Bounds(tagRECT* bounds);
+    HRESULT put_Bounds(tagRECT bounds);
+    HRESULT get_ZoomFactor(DOUBLE* zoomFactor);
+    HRESULT put_ZoomFactor(DOUBLE zoomFactor);
+    HRESULT add_ZoomFactorChanged(IWebView2ZoomFactorChangedEventHandler* eventHandler, EventRegistrationToken* token);
+    HRESULT remove_ZoomFactorChanged(EventRegistrationToken token);
+    HRESULT SetBoundsAndZoomFactor(tagRECT bounds, DOUBLE zoomFactor);
+    HRESULT MoveFocus(int reason);
+    HRESULT add_MoveFocusRequested(IWebView2MoveFocusRequestedEventHandler* eventHandler, EventRegistrationToken* token);
+    HRESULT remove_MoveFocusRequested(EventRegistrationToken token);
+    HRESULT add_GotFocus(IWebView2FocusChangedEventHandler* eventHandler, EventRegistrationToken* token);
+    HRESULT remove_GotFocus(EventRegistrationToken token);
+    HRESULT add_LostFocus(IWebView2FocusChangedEventHandler* eventHandler, EventRegistrationToken* token);
+    HRESULT remove_LostFocus(EventRegistrationToken token);
+    HRESULT add_AcceleratorKeyPressed(void* eventHandler, EventRegistrationToken* token);
+    HRESULT remove_AcceleratorKeyPressed(EventRegistrationToken token);
+    HRESULT get_ParentWindow(HWND* parentWindow);
+    HRESULT put_ParentWindow(HWND parentWindow);
+    HRESULT NotifyParentWindowPositionChanged();
+    HRESULT Close();
+    HRESULT get_CoreWebView2(void** coreWebView);
+}
+
+
+[uuid(34896570-DC04-40F9-A2DA-8582551A707D)]
+interface IWebView2NavigationStartingEventHandler : IUnknown {}
+
+[uuid(88E66305-3A5A-4E7F-9C76-2EBFC138CAFD)]
+interface IWebView2DocumentStateChangedEventHandler : IUnknown {}
+
+[uuid(DCEB3A27-C8C0-4DE7-889D-AF3DE80EDB3C)]
+interface IWebView2NavigationCompletedEventHandler : IUnknown {}
+
+[uuid(F3A49DD0-EA49-469C-8B7A-8CC5E8E4EF27)]
+interface IWebView2MoveFocusRequestedEventHandler : IUnknown {}
+
+[uuid(76BDBECE-02CC-4E56-AD81-5F808E8572A6)]
+interface IWebView2FocusChangedEventHandler : IUnknown {}
+
+[uuid(8EAF9A50-2AF9-45DA-9AC5-F80F4147180E)]
+interface IWebView2ZoomFactorChangedEventHandler : IUnknown {}
+
+[uuid(C5DA3C20-95AC-4345-B3C9-5FCA3B92C9DB)]
+interface IWebView2PermissionRequestedEventHandler : IUnknown {}
+
+[uuid(011EC830-5DAF-4767-A099-C43DE1A925F4)]
+interface IWebView2ProcessFailedEventHandler : IUnknown {}
+
+[uuid(EE07AA7F-5DAF-4C00-9C0B-5F736213C92D)]
+interface IWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler : IUnknown
+{
+    HRESULT Invoke(HRESULT errorCode, LPCWSTR id);
+}
+
+[uuid(EE07AA7F-5DAF-4C00-9C0B-5F736213C92D)]
+interface IWebView2ExecuteScriptCompletedHandler : IUnknown {
+    HRESULT Invoke(HRESULT errorCode, LPCWSTR resultObjectAsJson);
+}
+
+[uuid(0E682B9A-B686-4327-9A56-E0305705A3DB)]
+interface IWebView2WebMessageReceivedEventHandler : IUnknown
+{
+    HRESULT Invoke(IWebView2WebView *webview, void *args);
+}
+
+[uuid(76711B9E-8D56-4806-8485-35250BB2384F)]
+interface IWebView2WebView : IUnknown
+{
+    HRESULT get_Settings(void **settings);   
+    HRESULT get_Source(LPWSTR *uri);
+    HRESULT Navigate(LPCWSTR uri);
+    HRESULT MoveFocus(int reason);
+    HRESULT NavigateToString(LPCWSTR htmlContent);
+    HRESULT add_NavigationStarting(IWebView2NavigationStartingEventHandler *eventHandler, EventRegistrationToken *token);    
+    HRESULT remove_NavigationStarting(EventRegistrationToken token);
+    HRESULT add_DocumentStateChanged(IWebView2DocumentStateChangedEventHandler *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_DocumentStateChanged(EventRegistrationToken token);
+    HRESULT add_NavigationCompleted(IWebView2NavigationCompletedEventHandler *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_NavigationCompleted(EventRegistrationToken token);
+    HRESULT add_FrameNavigationStarting(IWebView2NavigationStartingEventHandler *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_FrameNavigationStarting(EventRegistrationToken token);
+    HRESULT add_MoveFocusRequested(IWebView2MoveFocusRequestedEventHandler *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_MoveFocusRequested(EventRegistrationToken token);
+    HRESULT add_GotFocus(IWebView2FocusChangedEventHandler *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_GotFocus(EventRegistrationToken token);
+    HRESULT add_LostFocus(IWebView2FocusChangedEventHandler *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_LostFocus(EventRegistrationToken token);    
+    HRESULT add_WebResourceRequested(LPCWSTR* urlFilter, void* resourceContextFilter, SIZE_T filterLength, void *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_WebResourceRequested(EventRegistrationToken token);
+    HRESULT add_ScriptDialogOpening(void *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_ScriptDialogOpening(EventRegistrationToken token);
+    HRESULT add_ZoomFactorChanged(IWebView2ZoomFactorChangedEventHandler *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_ZoomFactorChanged(EventRegistrationToken token);
+    HRESULT add_PermissionRequested(IWebView2PermissionRequestedEventHandler *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_PermissionRequested(EventRegistrationToken token);
+    HRESULT add_ProcessFailed(IWebView2ProcessFailedEventHandler *eventHandler, EventRegistrationToken *token);
+    HRESULT remove_ProcessFailed(EventRegistrationToken token);
+    HRESULT AddScriptToExecuteOnDocumentCreated(LPCWSTR javaScript, IWebView2AddScriptToExecuteOnDocumentCreatedCompletedHandler *handler);
+    HRESULT RemoveScriptToExecuteOnDocumentCreated(LPCWSTR id);
+    HRESULT ExecuteScript(LPCWSTR javaScript, IWebView2ExecuteScriptCompletedHandler *handler);
+    HRESULT CapturePreview(int imageFormat, void *imageStream, void *handler);
+    HRESULT Reload();
+    HRESULT get_Bounds(tagRECT *bounds);
+    HRESULT put_Bounds(tagRECT bounds);
+    HRESULT get_ZoomFactor(double *zoomFactor);
+    HRESULT put_ZoomFactor(double zoomFactor);
+    HRESULT get_IsVisible(BOOL *isVisible);
+    HRESULT put_IsVisible(BOOL isVisible);
+    HRESULT PostWebMessageAsJson(LPCWSTR webMessageAsJson);
+    HRESULT PostWebMessageAsString(LPCWSTR webMessageAsString);
+    HRESULT add_WebMessageReceived(IWebView2WebMessageReceivedEventHandler *handler, EventRegistrationToken *token);
+    HRESULT remove_WebMessageReceived(EventRegistrationToken token);
+    HRESULT Close();
+    HRESULT CallDevToolsProtocolMethod(LPCWSTR methodName, LPCWSTR parametersAsJson, void *handler);
+    HRESULT add_DevToolsProtocolEventReceived(LPCWSTR eventName, void*handler, EventRegistrationToken *token);
+    HRESULT remove_DevToolsProtocolEventReceived(LPCWSTR eventName, EventRegistrationToken token);
+    HRESULT get_BrowserProcessId(UINT32 *value);
+    HRESULT get_CanGoBack(BOOL *canGoBack);
+    HRESULT get_CanGoForward(BOOL *canGoForward);
+    int GoBack();
+    int GoForward();
+};

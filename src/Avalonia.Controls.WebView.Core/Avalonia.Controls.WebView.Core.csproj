@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <AdditionalFiles Include="**/*.mcidl" />
+    <PackageReference Include="MicroCom.Runtime" Version="0.11.0" />
     <PackageReference Include="MicroCom.CodeGenerator.Roslyn" Version="0.11.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
