@@ -19,6 +19,9 @@
                 <TextBox IsReadOnly="True" Grid.Row="1" x:Name="LogList" />
             </Grid>
         </TabItem>
+        <TabItem Header="GetUserMedia">
+            <NativeWebView Source="https://webrtc.github.io/samples/" />
+        </TabItem>
         <TabItem Header="WebAuthenticationBroker">
             <StackPanel>
                 <TextBox x:Name="RequestUri"

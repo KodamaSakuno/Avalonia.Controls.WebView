@@ -32,10 +32,12 @@ public class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterWit
         _config = new WKWebViewConfiguration { JavaScriptEnabled = true };
         _config.AddScriptMessageHandler(_scriptHandler, _postAvWebViewMessageName);
 
+        _config.Preferences.MediaDevicesEnabled = true;
+
         var enableDevTools = AvaloniaLocator.Current.GetService<WebViewOptions>()?.EnableDevTools == true;
         if (enableDevTools)
         {
-            _config.EnableDeveloperExtras();
+            _config.Preferences.DeveloperExtrasEnabled = true;
         }
 
         _navDelegate = new WKNavigationDelegate();
