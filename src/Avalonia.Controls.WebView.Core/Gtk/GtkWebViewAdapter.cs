@@ -112,7 +112,7 @@ internal class GtkWebViewAdapter : IWebViewAdapter, IWebViewAdapterWithFocus
         var gcHandle = GCHandle.Alloc(tcs);
         try
         {
-            RunOnGlibThread(() => webkit_web_view_run_javascript(
+            await RunOnGlibThreadAsync(() => webkit_web_view_run_javascript(
                 Handle,
                 script,
                 IntPtr.Zero,
@@ -191,6 +191,14 @@ internal class GtkWebViewAdapter : IWebViewAdapter, IWebViewAdapterWithFocus
                 return false;
             // WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION
             case 1:
+                if (GetUrlFromPolicyDecision(decision) is { } winUrlStr &&
+                    Uri.TryCreate(winUrlStr, UriKind.Absolute, out var winUrl))
+                {
+                    var args = new WebViewNewWindowRequestedEventArgs() { Request = winUrl };
+                    Dispatcher.UIThread.Invoke(() => adapter.NewWindowRequested?.Invoke(adapter, args));
+                    return args.Handled;
+                }
+
                 return false;
             default:
                 return true;
