@@ -101,14 +101,14 @@ internal class GtkWebViewAdapter : IWebViewAdapter
         }
     }
 
-    public void Navigate(Uri url)
+    public async void Navigate(Uri url)
     {
-        RunOnGlibThread(() => webkit_web_view_load_uri(Handle, url.ToString()));
+        await RunOnGlibThreadAsync(() => webkit_web_view_load_uri(Handle, url.ToString()));
     }
 
-    public void NavigateToString(string text)
+    public async void NavigateToString(string text)
     {
-        RunOnGlibThread(() => webkit_web_view_load_html(Handle, text, null));
+        await RunOnGlibThreadAsync(() => webkit_web_view_load_html(Handle, text, null));
     }
 
     public bool Refresh()
@@ -179,7 +179,7 @@ internal class GtkWebViewAdapter : IWebViewAdapter
                 if (GetUrlFromPolicyDecision(decision) is { } urlStr && Uri.TryCreate(urlStr, UriKind.Absolute, out var url))
                 {
                     var args = new WebViewNavigationStartingEventArgs { Request = url };
-                    Dispatcher.UIThread.Invoke(() => adapter.NavigationStarted?.Invoke(adapter, args));
+                    Dispatcher.UIThread.InvokeAsync(() => adapter.NavigationStarted?.Invoke(adapter, args));
                     return args.Cancel;
                 }
                 return false;
@@ -228,7 +228,7 @@ internal class GtkWebViewAdapter : IWebViewAdapter
                 _ = adapter.InvokeScript(
                     $"function invokeCSharpAction(data){{window.webkit.messageHandlers.{PostAvWebViewMessageName}.postMessage(data);}}");
 
-                Dispatcher.UIThread.Invoke(() => adapter.NavigationCompleted?
+                Dispatcher.UIThread.InvokeAsync(() => adapter.NavigationCompleted?
                     .Invoke(adapter, new WebViewNavigationCompletedEventArgs
                     {
                         IsSuccess = true,

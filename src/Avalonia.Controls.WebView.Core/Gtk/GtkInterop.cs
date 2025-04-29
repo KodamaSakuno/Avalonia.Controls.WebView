@@ -1,21 +1,36 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
+
 namespace Avalonia.Controls.Gtk;
 
 internal static unsafe partial class GtkInterop
 {
     private const string LibGObject = "libgobject-2.0.so.0";
     private const string LibWebKit = "libwebkit2gtk-4.1.so.0";
+    private const string LibGLib = "libglib-2.0.so.0";
     private const string LibGio = "libgio-2.0.so.0";
     private const string LibGtk = "libgtk-3.so.0";
     private const string LibGdk = "libgdk-3.so.0";
+
+
+#if NET7_0_OR_GREATER
+    [LibraryImport(LibGLib, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial uint g_log_set_handler(string? logDomain, uint logLevels, IntPtr callback, IntPtr userData);
+#else
+    [DllImport(LibGLib)]
+    internal static extern uint g_log_set_handler(string? logDomain, uint logLevels, IntPtr callback, IntPtr userData);
+#endif
 
     [DllImport(LibWebKit)]
     internal static extern IntPtr webkit_web_view_get_uri(IntPtr webView);
 
     [DllImport(LibGio)]
     internal static extern void g_free(IntPtr ptr);
+
+    [DllImport(LibGio)]
+    internal static extern IntPtr g_application_get_default();
 
     [DllImport(LibWebKit)]
     internal static extern IntPtr webkit_web_view_new();
@@ -77,7 +92,13 @@ internal static unsafe partial class GtkInterop
     internal static extern void gtk_container_add(IntPtr container, IntPtr widget);
 
     [DllImport(LibGtk)]
+    internal static extern void gtk_application_add_window(IntPtr app, IntPtr window);
+
+    [DllImport(LibGtk)]
     internal static extern void gtk_widget_show_all(IntPtr widget);
+
+    [DllImport(LibGtk)]
+    internal static extern void gtk_widget_hide(IntPtr widget);
 
     [DllImport(LibGtk)]
     internal static extern void gtk_widget_destroy(IntPtr widget);
@@ -85,11 +106,23 @@ internal static unsafe partial class GtkInterop
     [DllImport(LibGObject)]
     internal static extern ulong g_error_free(GError* error);
 
+    [DllImport(LibGObject)]
+    internal static extern IntPtr g_object_ref(IntPtr handle);
+
+    [DllImport (LibGObject)]
+    internal static extern void g_object_unref(IntPtr handle);
+
     [DllImport(LibGtk)]
     internal static extern IntPtr gtk_window_new(int type);
 
     [DllImport(LibGtk)]
+    internal static extern IntPtr gtk_offscreen_window_new();
+
+    [DllImport(LibGtk)]
     internal static extern void gtk_window_resize(IntPtr window, int width, int height);
+
+    [DllImport(LibGtk)]
+    internal static extern void gtk_widget_set_size_request(IntPtr widget, int width, int height);
 
     [DllImport(LibGtk)]
     internal static extern void gtk_window_move(IntPtr window, int x, int y);
@@ -107,7 +140,28 @@ internal static unsafe partial class GtkInterop
     internal static extern void gtk_widget_realize(IntPtr gtkWidget);
 
     [DllImport(LibGtk)]
+    internal static extern void gtk_widget_set_has_window(IntPtr gtkWidget, bool hasWindow);
+
+    [DllImport(LibGtk)]
     internal static extern IntPtr gtk_widget_get_window(IntPtr gtkWidget);
+
+    [DllImport(LibGtk)]
+    internal static extern int gtk_widget_get_allocated_width(IntPtr window);
+
+    [DllImport(LibGtk)]
+    internal static extern int gtk_widget_get_allocated_height(IntPtr window);
+
+    [DllImport(LibGtk)]
+    public static extern bool gtk_events_pending();
+
+    [DllImport(LibGtk)]
+    public static extern bool gtk_main_iteration_do(bool blocking);
+
+    [DllImport(LibGtk, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr gtk_offscreen_window_get_pixbuf(IntPtr raw);
+
+    [DllImport(LibGdk, CallingConvention = CallingConvention.Cdecl)]
+    internal static extern IntPtr gdk_pixbuf_get_from_window(IntPtr gdkWindow, int x, int y, int width, int height);
 
     [DllImport(LibGdk)]
     internal static extern void gdk_window_set_transient_for(IntPtr window, IntPtr parent);
@@ -117,6 +171,52 @@ internal static unsafe partial class GtkInterop
 
     [DllImport(LibGdk)]
     internal static extern IntPtr gdk_display_get_default();
+    [DllImport(LibGdk)]
+    internal static extern IntPtr gdk_display_get_default_seat(IntPtr display);
+    [DllImport(LibGdk)]
+    internal static extern IntPtr gdk_seat_get_pointer(IntPtr seat);
+
+    [DllImport(LibGdk)]
+    public static extern IntPtr gdk_event_new(GdkEventType type);
+
+    [DllImport(LibGdk)]
+    public static extern bool gtk_widget_event(IntPtr widget, IntPtr gdkEvent);
+
+    [DllImport(LibGdk)]
+    public static extern void gtk_main_do_event(IntPtr gdkEvent);
+
+    [DllImport(LibGdk)]
+    public static extern void gdk_event_free(IntPtr gdkEvent);
+
+    [DllImport(LibGdk)]
+    public static extern void gdk_event_put(IntPtr gdkEvent);
+
+    [DllImport(LibGdk)]
+    public static extern int gdk_pixbuf_get_width(nint pixbuf);
+
+    [DllImport(LibGdk)]
+    public static extern int gdk_pixbuf_get_height(nint pixbuf);
+
+    [DllImport(LibGdk)]
+    public static extern int gdk_pixbuf_get_rowstride(nint pixbuf);
+
+    [DllImport(LibGdk)]
+    public static extern IntPtr gdk_pixbuf_get_pixels(nint pixbuf);
+
+    [DllImport(LibGdk)]
+    public static extern int gdk_pixbuf_get_n_channels(nint pixbuf);
+
+    [DllImport(LibGdk)]
+    public static extern IntPtr gdk_pixbuf_add_alpha(nint pixbuf, bool substituteColor, byte r, byte g, byte b);
+
+#if NET7_0_OR_GREATER
+    [LibraryImport(LibGdk)]
+    public static partial void gdk_window_get_root_coords(IntPtr raw, int x, int y, out int rootX, out int rootY);
+#else
+
+    [DllImport(LibGdk)]
+    public static extern void gdk_window_get_root_coords(IntPtr raw, int x, int y, out int rootX, out int rootY);
+#endif
 
     [DllImport(LibGtk)]
     internal static extern IntPtr gtk_window_get_title(IntPtr window);
