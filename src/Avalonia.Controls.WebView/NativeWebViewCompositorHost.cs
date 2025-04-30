@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Avalonia.Controls.Gtk;
+using Avalonia.Controls.Rendering;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Rendering.Composition;
+using Avalonia.Threading;
 
 #if AVALONIA
 namespace Avalonia.Controls;
@@ -12,13 +14,20 @@ namespace Avalonia.Controls;
 namespace Avalonia.Xpf.Controls;
 #endif
 
-internal class NativeWebViewCompositorHost(Func<NativeWebViewCompositorHost, IWebViewAdapterWithOffscreenBuffer> webViewFactory) : Control, INativeWebViewControlImpl
+internal class NativeWebViewCompositorHost : Control, INativeWebViewControlImpl
 {
+    private readonly Func<NativeWebViewCompositorHost, IWebViewAdapterWithOffscreenBuffer> _webViewFactory;
     private TaskCompletionSource<IWebViewAdapterWithOffscreenBuffer> _webViewReadyCompletion = new();
     //private ReparentingScope? _reparentingScope;
     private bool _firstDraw;
-
     private CompositionCustomVisual? _customVisual;
+    private readonly BitmapFrameChain _frameChain;
+
+    private NativeWebViewCompositorHost(Func<NativeWebViewCompositorHost, IWebViewAdapterWithOffscreenBuffer> webViewFactory)
+    {
+        _webViewFactory = webViewFactory;
+        _frameChain = new BitmapFrameChain();
+    }
 
     public static NativeWebViewCompositorHost? TryCreate()
     {
@@ -52,13 +61,13 @@ internal class NativeWebViewCompositorHost(Func<NativeWebViewCompositorHost, IWe
     {
         base.OnAttachedToVisualTree(e);
 
-        var adapter = webViewFactory(this);
+        var adapter = _webViewFactory(this);
 
         var compositorVisual = ElementComposition.GetElementVisual(this)!;
         _firstDraw = true;
-        _customVisual = compositorVisual.Compositor.CreateCustomVisual(new VisualHandler(adapter));
+        _customVisual = compositorVisual.Compositor.CreateCustomVisual(new VisualHandler());
         _customVisual.Size = new Vector(Bounds.Width, Bounds.Height);
-        _customVisual.SendHandlerMessage(VisualHandler.DrawRequested);
+        _customVisual.SendHandlerMessage(_frameChain.Consumer);
         ElementComposition.SetElementChildVisual(this, _customVisual);
 
         if (adapter.IsInitialized)
@@ -104,58 +113,60 @@ internal class NativeWebViewCompositorHost(Func<NativeWebViewCompositorHost, IWe
         adapter.DrawRequested += OffscreenAdapter_OnDrawRequested;
     }
 
-    private void OffscreenAdapter_OnDrawRequested()
+    private async void OffscreenAdapter_OnDrawRequested()
     {
+        var adapter = (IWebViewAdapterWithOffscreenBuffer)TryGetAdapter()!;
+
         if (_firstDraw)
         {
             _firstDraw = false;
-            TryGetAdapter()?.SizeChanged(PixelSize.FromSize(Bounds.Size, TopLevel.GetTopLevel(this)!.RenderScaling));
+            adapter.SizeChanged(PixelSize.FromSize(Bounds.Size, TopLevel.GetTopLevel(this)!.RenderScaling));
         }
 
+        await adapter.UpdateWriteableBitmap(_frameChain.Producer);
         _customVisual?.SendHandlerMessage(VisualHandler.DrawRequested);
     }
 
-    private class VisualHandler(IWebViewAdapterWithOffscreenBuffer offscreenBuffer) : CompositionCustomVisualHandler
+    private class VisualHandler : CompositionCustomVisualHandler
     {
         public static readonly object DrawRequested = new();
         public static readonly object Stop = new();
 
-        private WriteableBitmap? _bitmap;
-        private TimeSpan _drawUntil;
+        private FrameChainBase<WriteableBitmap, PixelSize>.IConsumer? _frameConsumer;
 
         public override void OnMessage(object message)
         {
-            if (message == DrawRequested)
+            if (message is FrameChainBase<WriteableBitmap, PixelSize>.IConsumer consumer)
             {
-                // Keep rendering for another 100ms after it was requested, making webview smoother.
-                // Even something plain as scroll will require this smoothness,
-                // which might not be delivered on dispatcher-delivered DrawRequested messages.
-                _drawUntil = CompositionNow + TimeSpan.FromMilliseconds(100);
+                _frameConsumer = consumer;
+                RegisterForNextAnimationFrameUpdate();
+            }
+            else if (message == DrawRequested)
+            {
                 RegisterForNextAnimationFrameUpdate();
             }
             else if (message == Stop)
             {
-                _drawUntil = TimeSpan.Zero;
+                _frameConsumer = null;
+                RegisterForNextAnimationFrameUpdate();
             }
 
             base.OnMessage(message);
         }
 
-        public override void OnRender(ImmediateDrawingContext drawingContext)
-        {
-            offscreenBuffer.UpdateWriteableBitmap(ref _bitmap);
-            if (_bitmap is not null)
-            {
-                drawingContext.DrawBitmap(_bitmap, GetRenderBounds());
-            }
-        }
-
         public override void OnAnimationFrameUpdate()
         {
-            Invalidate();
-            if (_drawUntil > CompositionNow)
+            var hasNextFrame = _frameConsumer?.NextFrame() == true;
+            if (hasNextFrame)
+                Invalidate();
+        }
+
+        public override void OnRender(ImmediateDrawingContext drawingContext)
+        {
+            if (_frameConsumer is not null
+                && _frameConsumer.CurrentFrame is { } frame)
             {
-                RegisterForNextAnimationFrameUpdate();
+                drawingContext.DrawBitmap(frame, GetRenderBounds());
             }
         }
     }

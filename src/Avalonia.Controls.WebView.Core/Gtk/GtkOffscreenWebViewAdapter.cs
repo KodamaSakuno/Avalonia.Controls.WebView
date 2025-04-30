@@ -2,6 +2,8 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
+using Avalonia.Controls.Rendering;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
@@ -47,20 +49,18 @@ internal unsafe class GtkOffscreenWebViewAdapter : GtkWebViewAdapter,
 
     public event Action? DrawRequested;
 
-    public void UpdateWriteableBitmap(ref WriteableBitmap? bitmap)
+    public Task UpdateWriteableBitmap(FrameChainBase<WriteableBitmap, PixelSize>.IProducer producer)
     {
         if (_windowHandle == IntPtr.Zero)
         {
-            bitmap = null;
-            return;
+            return Task.CompletedTask;
         }
 
-        var inBitmap = bitmap;
-        bitmap = RunOnGlibThreadAsync(() =>
+        return RunOnGlibThreadAsync(() =>
         {
             if (_windowHandle == IntPtr.Zero)
             {
-                return null;
+                return;
             }
 
             IntPtr pixbuf;
@@ -84,7 +84,7 @@ internal unsafe class GtkOffscreenWebViewAdapter : GtkWebViewAdapter,
 
             if (pixbuf == IntPtr.Zero)
             {
-                return null;
+                return;
             }
 
             try
@@ -96,45 +96,29 @@ internal unsafe class GtkOffscreenWebViewAdapter : GtkWebViewAdapter,
                 var pixelsPtr = gdk_pixbuf_get_pixels(pixbuf);
 
                 var size = new PixelSize(width, height);
-                var dpi = new Vector(96, 96);
-                var format = PixelFormat.Rgba8888;
-                var alpha = AlphaFormat.Unpremul;
 
                 if (channels == 4)
                 {
-                    if (inBitmap == null || inBitmap.PixelSize != size)
+                    using (producer.GetNextFrame(size, out var frame))
                     {
-                        return new WriteableBitmap(
-                            format,
-                            alpha,
-                            pixelsPtr,
-                            size,
-                            dpi,
-                            stride
+                        using var buf = frame.Lock();
+                        var bytesPerRow = Math.Min(stride, buf.RowBytes);
+                        var totalBytes = bytesPerRow * height;
+
+                        Buffer.MemoryCopy(
+                            source: (void*)pixelsPtr,
+                            destination: (void*)buf.Address,
+                            destinationSizeInBytes: buf.RowBytes * height,
+                            sourceBytesToCopy: totalBytes
                         );
                     }
-
-                    // Reuse existing WriteableBitmap — copy data directly
-                    using var buf = inBitmap.Lock();
-                    var bytesPerRow = Math.Min(stride, buf.RowBytes);
-                    var totalBytes = bytesPerRow * height;
-
-                    Buffer.MemoryCopy(
-                        source: (void*)pixelsPtr,
-                        destination: (void*)buf.Address,
-                        destinationSizeInBytes: buf.RowBytes * height,
-                        sourceBytesToCopy: totalBytes
-                    );
-                    return inBitmap;
                 }
-
-                return null;
             }
             finally
             {
                 g_object_unref(pixbuf);
             }
-        }).GetAwaiter().GetResult();
+        });
     }
 
     public override void SizeChanged(PixelSize containerSize)

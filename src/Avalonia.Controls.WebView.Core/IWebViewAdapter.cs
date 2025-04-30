@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Avalonia.Controls.Rendering;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using RoutedEventArgs = Avalonia.Interactivity.RoutedEventArgs;
@@ -233,7 +234,6 @@ internal interface IWebViewAdapterWithOffscreenInput : IWebViewAdapter
 
 internal interface IWebViewAdapterWithOffscreenBuffer : IWebViewAdapter
 {
-    // Oversimplified implementation, which assumes render thread to be blocked until GDK thread creates a new bitmap.
     event Action DrawRequested;
-    void UpdateWriteableBitmap(ref WriteableBitmap? bitmap);
+    Task UpdateWriteableBitmap(FrameChainBase<WriteableBitmap, PixelSize>.IProducer producer);
 }
