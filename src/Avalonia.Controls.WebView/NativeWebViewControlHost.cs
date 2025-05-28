@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Avalonia.Controls.Win.WebView2;
 using Avalonia.Media;
 using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
 using Core = Avalonia.Controls;
@@ -59,9 +60,9 @@ namespace Avalonia.Xpf.Controls
 #elif NET6_0_OR_GREATER || NETFRAMEWORK
             if (OperatingSystemEx.IsWindows())
             {
-                if (WebViewHelper.IsMsWebView2Available)
+                if (WebView2BaseAdapter.IsAvailable)
                 {
-                    adapter = new Core.Win.WebView2HwndAdapter(base.CreateNativeControlCore(parent));
+                    adapter = new WebView2HwndAdapter(base.CreateNativeControlCore(parent));
                 }
                 // else if (WebViewCapabilities.IsMsWebView1Available)
                 // {
@@ -69,7 +70,6 @@ namespace Avalonia.Xpf.Controls
                 // }
                 // else if (IE Supported)
                 // {
-                //    adapter = new Core.Win.WebBrowserAdapter();
                 // }
             }
 #endif

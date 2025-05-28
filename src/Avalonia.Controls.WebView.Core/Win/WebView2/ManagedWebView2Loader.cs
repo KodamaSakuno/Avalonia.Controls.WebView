@@ -4,7 +4,7 @@ using System.IO;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
 
-namespace Avalonia.Controls.Win;
+namespace Avalonia.Controls.Win.WebView2;
 
 [SupportedOSPlatform("windows")]
 internal static class ManagedWebView2Loader
@@ -26,6 +26,11 @@ internal static class ManagedWebView2Loader
     /// <returns>Path to the WebView2 runtime DLL, or null if not found</returns>
     public static string? FindWebView2Runtime()
     {
+        if (!OperatingSystemEx.IsWindows())
+        {
+            return null;
+        }
+
         // Try HKLM first (machine-wide installation)
         foreach (var channel in s_channelInfo)
         {
