@@ -19,6 +19,11 @@ internal enum COREWEBVIEW2_BOUNDS_MODE
 [Guid("F9614724-5D2B-41DC-AEF7-73D62B51543B")]
 internal partial interface ICoreWebView2Controller3 : ICoreWebView2Controller2
 {
+    // See https://learn.microsoft.com/en-us/dotnet/standard/native-interop/comwrappers-source-generation#derived-interfaces
+#if !COM_SOURCE_GEN
+    void _VtblGap1_25();
+#endif
+
     double GetRasterizationScale();
     void SetRasterizationScale(double value);
 

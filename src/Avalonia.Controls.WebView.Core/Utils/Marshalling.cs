@@ -21,18 +21,6 @@ namespace System.Runtime.InteropServices.Marshalling
             Marshal.Release(new IntPtr(native));
         }
     }
-
-    public class CallbackBase : MarshalByRefObject
-    {
-    }
-
-    internal class GeneratedComClassAttribute : Attribute
-    {
-    }
-#else
-    public class CallbackBase
-    {
-    }
 #endif
 }
 

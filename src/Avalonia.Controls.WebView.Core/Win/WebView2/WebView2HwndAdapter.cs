@@ -22,17 +22,10 @@ internal partial class WebView2HwndAdapter(IPlatformHandle handle) : WebView2Bas
         return handler.Result.Task;
     }
 
+#if COM_SOURCE_GEN
     [GeneratedComClass]
-    private partial class WebView2ControllerHandler : CallbackBase, ICoreWebView2CreateCoreWebView2ControllerCompletedHandler
-    {
-        public TaskCompletionSource<ICoreWebView2Controller> Result { get; } = new();
-        public void Invoke(int errorCode, ICoreWebView2Controller result)
-        {
-            if (errorCode != 0)
-                Result?.TrySetException(new Win32Exception(errorCode));
-            else
-                Result?.TrySetResult(result);
-        }
-    }
+#endif
+    private partial class WebView2ControllerHandler : GenericCompletedHandler<ICoreWebView2Controller>,
+        ICoreWebView2CreateCoreWebView2ControllerCompletedHandler;
 }
 #endif

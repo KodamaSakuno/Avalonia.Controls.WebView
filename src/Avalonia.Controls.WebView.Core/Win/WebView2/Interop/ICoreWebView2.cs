@@ -24,7 +24,7 @@ internal partial interface ICoreWebView2
 
     void NavigateToString([MarshalAs(UnmanagedType.LPWStr)] string htmlContent);
 
-    void add_NavigationStarting([MarshalAs(UnmanagedType.Interface)] IntPtr eventHandler, out EventRegistrationToken token);
+    void add_NavigationStarting([MarshalAs(UnmanagedType.Interface)] ICoreWebView2NavigationStartingEventHandler eventHandler, out EventRegistrationToken token);
     void remove_NavigationStarting(EventRegistrationToken token);
 
     void add_ContentLoading([MarshalAs(UnmanagedType.Interface)] IntPtr eventHandler, out EventRegistrationToken token);
@@ -36,7 +36,7 @@ internal partial interface ICoreWebView2
     void add_HistoryChanged([MarshalAs(UnmanagedType.Interface)] IntPtr eventHandler, out EventRegistrationToken token);
     void remove_HistoryChanged(EventRegistrationToken token);
 
-    void add_NavigationCompleted([MarshalAs(UnmanagedType.Interface)] IntPtr eventHandler, out EventRegistrationToken token);
+    void add_NavigationCompleted([MarshalAs(UnmanagedType.Interface)] ICoreWebView2NavigationCompletedEventHandler eventHandler, out EventRegistrationToken token);
     void remove_NavigationCompleted(EventRegistrationToken token);
 
     void add_FrameNavigationStarting([MarshalAs(UnmanagedType.Interface)] IntPtr eventHandler, out EventRegistrationToken token);
@@ -67,7 +67,7 @@ internal partial interface ICoreWebView2
 
     void PostWebMessageAsString([MarshalAs(UnmanagedType.LPWStr)] string webMessageAsString);
 
-    void add_WebMessageReceived([MarshalAs(UnmanagedType.Interface)] IntPtr handler, out EventRegistrationToken token);
+    void add_WebMessageReceived([MarshalAs(UnmanagedType.Interface)] ICoreWebView2WebMessageReceivedEventHandler handler, out EventRegistrationToken token);
     void remove_WebMessageReceived(EventRegistrationToken token);
 
     void CallDevToolsProtocolMethod([MarshalAs(UnmanagedType.LPWStr)] string methodName, [MarshalAs(UnmanagedType.LPWStr)] string parametersAsJson, [MarshalAs(UnmanagedType.Interface)] IntPtr handler);
@@ -87,7 +87,7 @@ internal partial interface ICoreWebView2
 
     void Stop();
 
-    void add_NewWindowRequested([MarshalAs(UnmanagedType.Interface)] IntPtr eventHandler, out EventRegistrationToken token);
+    void add_NewWindowRequested([MarshalAs(UnmanagedType.Interface)] ICoreWebView2NewWindowRequestedEventHandler eventHandler, out EventRegistrationToken token);
     void remove_NewWindowRequested(EventRegistrationToken token);
 
     void add_DocumentTitleChanged([MarshalAs(UnmanagedType.Interface)] IntPtr eventHandler, out EventRegistrationToken token);

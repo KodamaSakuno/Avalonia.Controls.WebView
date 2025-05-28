@@ -71,7 +71,9 @@ internal static partial class CoreWebView2Environment
         return createEnvPtr;
     });
 
+#if COM_SOURCE_GEN
     [GeneratedComClass]
+#endif
     private partial class Options : CallbackBase, ICoreWebView2EnvironmentOptions
     {
         public string? GetAdditionalBrowserArguments() => null;
@@ -91,16 +93,9 @@ internal static partial class CoreWebView2Environment
         public void SetAllowSingleSignOnUsingOSPrimaryAccount(int allowSingleSignOnUsingOSPrimaryAccount) {}
     }
 
+#if COM_SOURCE_GEN
     [GeneratedComClass]
-    private partial class WebView2EnvHandler : CallbackBase, ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler
-    {
-        public TaskCompletionSource<ICoreWebView2Environment> Result { get; } = new();
-        public void Invoke(int errorCode, ICoreWebView2Environment result)
-        {
-            if (errorCode != 0)
-                Result.TrySetException(new Win32Exception(errorCode));
-            else
-                Result.TrySetResult(result);
-        }
-    }
+#endif
+    private partial class WebView2EnvHandler : GenericCompletedHandler<ICoreWebView2Environment>,
+        ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler;
 }
