@@ -24,6 +24,33 @@ jobs:
       if: github.ref == 'refs/heads/main'
       run: dotnet nuget push ${{github.workspace}}/artifacts/**/*.nupkg  --api-key ${{secrets.baget_api_key}} --source ${{ vars.BAGET_API_URL }}
 
+    - name: Upload nupkg artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: nupkgs
+        path: ${{github.workspace}}/artifacts/**/*.nupkg
+        retention-days: 1
+
+  publish-release:
+    runs-on: [self-hosted, Linux]
+    needs: build
+    if: startsWith(github.ref, 'refs/heads/release/')
+    steps:
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: nupkgs
+        path: ./nupkgs
+
     - name: Publish release
-      if: startsWith(github.ref, 'refs/heads/release/')
-      run: dotnet nuget push ${{github.workspace}}/artifacts/**/*.nupkg  --api-key ${{secrets.PROPACK_FEED_API_KEY}} --source ${{ vars.PROPACK_FEED_UPLOAD_URL }}
+      run: dotnet nuget push ./nupkgs/**/*.nupkg --api-key ${{secrets.PROPACK_FEED_API_KEY}} --source ${{ vars.PROPACK_FEED_UPLOAD_URL }}
+
+    - name: Delete nupkg artifact
+      if: always()
+      uses: geekyeggo/delete-artifact@v5
+      with:
+        name: nupkgs
+
+    - name: Clean packages
+      if: always()
+      run: rm -rf ./nupkgs
