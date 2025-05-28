@@ -64,12 +64,19 @@ internal sealed class WebView1Adapter : IWebViewAdapter
             settings.put_IsScriptNotifyAllowed(true);
         }
 
-        if (control is IWebViewControl2 control2)
-        {
-            using var initScript =
-                new HStringInterop("function invokeCSharpAction(data){window.external.notify(data);}");
-            control2.AddInitializeScript(initScript.Handle);
-        }
+        // Doesn't work for some reason.
+        // Instead injecting script in the NavigationCompleted
+        // if (control is IWebViewControl2 control2)
+        // {
+        //      var initScript =
+        //         new HStringInterop("""
+        //                            window.invokeCSharpAction = function(data) {
+        //                                var message = typeof data === 'object' ? JSON.stringify(data) : data;
+        //                                window.external.notify(message);
+        //                            };
+        //                            """);
+        //     control2.AddInitializeScript(initScript.Handle);
+        // }
 
         _webViewControl = control;
         // ReSharper disable once SuspiciousTypeConversion.Global

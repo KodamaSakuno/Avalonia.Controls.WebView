@@ -93,28 +93,13 @@ internal abstract class ArrayIterator<TItem>(
 [SupportedOSPlatform("windows")]
 internal partial class HStringIterator(IEnumerable<string> items) : ArrayIterator<string>(items)
 {
-    private readonly List<HStringInterop> _interops = [];
-    protected override IntPtr GetCurrent(string? item)
-    {
-        var interop = new HStringInterop(item);
-        _interops.Add(interop);
-        return interop.Handle;
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            foreach (var interop in _interops)
-            {
-                interop.Dispose();
-            }
-        }
-        base.Dispose(disposing);
-    }
+    // Can OS release it for us? Will see.
+    protected override IntPtr GetCurrent(string? item) => new HStringInterop(item).Handle;
 
     protected override Guid[] GetIids()
     {
+        // might be worth finding GUID for IIterator<HString> and IIterable<HString>.
+        // But it wors without ever calling this method.
         throw new NotImplementedException();
     }
 }

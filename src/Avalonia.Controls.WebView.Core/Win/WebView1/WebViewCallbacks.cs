@@ -2,6 +2,7 @@
 using System.Runtime.InteropServices.Marshalling;
 using System.Runtime.Versioning;
 using Avalonia.Controls.Win.WebView1.Interop;
+using Avalonia.Logging;
 
 namespace Avalonia.Controls.Win.WebView1;
 
@@ -29,8 +30,32 @@ internal partial class WebViewCallbacks(WeakReference<WebView1Adapter> weakAdapt
         if (weakAdapter.TryGetTarget(out var adapter)
             && Uri.TryCreate(HStringInterop.FromIntPtr(e.get_Uri().get_AbsoluteUri()), UriKind.Absolute, out var uri))
         {
+            InitScript();
+
             adapter.OnNavigationCompleted(
                 new WebViewNavigationCompletedEventArgs { Request = uri, IsSuccess = e.get_IsSuccess() });
+        }
+
+        // Ideally should be using AddInitializeScript.
+        // But I couldn't get it working for some reason. It's simply not executed.
+        async void InitScript()
+        {
+            try
+            {
+                var initScript =
+                    """
+                    window.invokeCSharpAction = function(data) {
+                        var message = typeof data === 'object' ? JSON.stringify(data) : data;
+                        window.external.notify(message);
+                    };
+                    """;
+                await adapter.InvokeScript(initScript);
+            }
+            catch (Exception ex)
+            {
+                Logger.TryGet(LogEventLevel.Warning, "WebView")?.Log(adapter,
+                    "`invokeCSharpAction` script initialization on page loading failed.\r\n{Exception}", ex);
+            }
         }
     }
 
