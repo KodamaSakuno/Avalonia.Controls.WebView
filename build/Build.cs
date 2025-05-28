@@ -129,12 +129,13 @@ class Build : NukeBuild
                 var projectRoot = RootDirectory / "src" / projectName;
                 var obfuscationMapFile = RootDirectory / "Obfuscated" / (projectName + ".ObfuscationMap.xml");
                 var obfuscationLogFile = RootDirectory / "Obfuscated" / (projectName + ".Obfuscation.log");
+                var rules = RootDirectory / "build" / "Babel.rules";
 
                 foreach (var buildOutput in (projectRoot / "bin" / Configuration).GlobDirectories("net*"))
                 {
                     var dllFile = buildOutput / (projectName + ".dll");
                     
-                    Babel($"{dllFile} --nologo  --output {dllFile}  --mapout {obfuscationMapFile} --logfile {obfuscationLogFile}", RootDirectory);
+                    Babel($"{dllFile} --nologo --rules {rules} --output {dllFile}  --mapout {obfuscationMapFile} --logfile {obfuscationLogFile}", RootDirectory);
                 }
             }
         });
