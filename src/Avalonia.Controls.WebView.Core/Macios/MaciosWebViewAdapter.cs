@@ -14,7 +14,7 @@ namespace Avalonia.Controls.Macios;
 
 [SupportedOSPlatform("macos")]
 [SupportedOSPlatform("ios")]
-public class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterWithInputRedirect, IWebViewAdapterWithCookieManager, IWebViewAdapterWithCommands
+internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterWithInputRedirect, IWebViewAdapterWithCookieManager, IWebViewAdapterWithCommands
 {
     private const string PostAvWebViewMessageName = "postAvWebViewMessage";
 
