@@ -114,7 +114,7 @@ internal enum GdkModifierType : uint
     ALL_ACCESS_MASK = GDK_CONTROL_MASK | GDK_SHIFT_MASK | GDK_ALT_MASK | GDK_LOCK_MASK
 }
 
-public enum GdkScrollDirection
+internal enum GdkScrollDirection
 {
     GDK_SCROLL_UP,
     GDK_SCROLL_DOWN,
