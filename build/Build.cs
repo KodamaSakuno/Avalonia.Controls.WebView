@@ -106,6 +106,17 @@ class Build : NukeBuild
         .DependsOn(IlMerge)
         .Executes(() =>
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                Log.Warning("Obfuscation is skipped");
+                if (!IsLocalBuild)
+                {
+                    throw new InvalidOperationException("Babel requires Windows CI machine");
+                }
+
+                return;
+            }
+
             string[] projectsToObfuscate =
             [
                 "Avalonia.Controls.WebView",
@@ -116,8 +127,6 @@ class Build : NukeBuild
                 Log.Information("Obfuscating {Project}", projectName);
 
                 var projectRoot = RootDirectory / "src" / projectName;
-                var babelFile = projectRoot / (projectName + ".babel");
-                var rulesFile = projectRoot / (projectName + ".babel.rules");
                 var obfuscationMapFile = RootDirectory / "Obfuscated" / (projectName + ".ObfuscationMap.xml");
                 var obfuscationLogFile = RootDirectory / "Obfuscated" / (projectName + ".Obfuscation.log");
 
@@ -125,7 +134,7 @@ class Build : NukeBuild
                 {
                     var dllFile = buildOutput / (projectName + ".dll");
                     
-                    Babel($"{dllFile} --project {babelFile} --rules {rulesFile} --output {dllFile}  --mapout {obfuscationMapFile} --logfile {obfuscationLogFile}", RootDirectory);
+                    Babel($"{dllFile} --nologo  --output {dllFile}  --mapout {obfuscationMapFile} --logfile {obfuscationLogFile}", RootDirectory);
                 }
             }
         });
