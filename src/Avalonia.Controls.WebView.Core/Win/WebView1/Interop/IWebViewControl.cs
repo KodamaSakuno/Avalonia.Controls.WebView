@@ -107,7 +107,7 @@ internal partial interface IWebViewControl : IInspectable
 
     void remove_FrameNavigationCompleted(EventRegistrationToken token);
 
-    void add_ScriptNotify(IntPtr handler, out EventRegistrationToken token);
+    void add_ScriptNotify(IWebViewControlScriptNotifyHandler handler, out EventRegistrationToken token);
 
     void remove_ScriptNotify(EventRegistrationToken token);
 
@@ -131,7 +131,7 @@ internal partial interface IWebViewControl : IInspectable
 
     void remove_UnsupportedUriSchemeIdentified(EventRegistrationToken token);
 
-    void add_NewWindowRequested(IntPtr handler, out EventRegistrationToken token);
+    void add_NewWindowRequested(IWebViewControlNewWindowRequestedHandler handler, out EventRegistrationToken token);
 
     void remove_NewWindowRequested(EventRegistrationToken token);
 

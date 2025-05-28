@@ -10,7 +10,8 @@ namespace Avalonia.Controls.Win.WebView1;
 #endif
 [SupportedOSPlatform("windows6.1")]
 internal partial class WebViewCallbacks(WeakReference<WebView1Adapter> weakAdapter) : InspectableCallbackBase,
-    IWebViewControlNavigationStartingHandler, IWebViewControlNavigationCompletedHandler
+    IWebViewControlNavigationStartingHandler, IWebViewControlNavigationCompletedHandler,
+    IWebViewControlScriptNotifyHandler, IWebViewControlNewWindowRequestedHandler
 {
     public void Invoke(IntPtr sender, IWebViewControlNavigationStartingEventArgs e)
     {
@@ -33,41 +34,33 @@ internal partial class WebViewCallbacks(WeakReference<WebView1Adapter> weakAdapt
         }
     }
 
-    // public void Invoke(ICoreWebView2 sender, ICoreWebView2WebMessageReceivedEventArgs e)
-    // {
-    //     if (weakAdapter.TryGetTarget(out var adapter))
-    //     {
-    //         string? message = null;
-    //
-    //         try
-    //         {
-    //             // this `Try` method can throw undescriptive ArgumentException. Keep going WinRT.
-    //             message = e.TryGetWebMessageAsString();
-    //         }
-    //         catch
-    //         {
-    //             // ignore
-    //         }
-    //
-    //         message ??= e.WebMessageAsJson();
-    //
-    //         adapter.OnWebMessageReceived(new WebMessageReceivedEventArgs { Body = message });
-    //     }
-    // }
-    //
-    // public void Invoke(ICoreWebView2 sender, ICoreWebView2NewWindowRequestedEventArgs e)
-    // {
-    //     if (weakAdapter.TryGetTarget(out var adapter)
-    //         && Uri.TryCreate(e.GetUri(), UriKind.Absolute, out var uri))
-    //     {
-    //         var args = new WebViewNewWindowRequestedEventArgs { Request = uri };
-    //         adapter.OnNewWindowRequested(args);
-    //         if (args.Handled) e.SetHandled(1);
-    //     }
-    // }
+    public void Invoke(IntPtr sender, IWebViewControlScriptNotifyEventArgs e)
+    {
+        if (weakAdapter.TryGetTarget(out var adapter))
+        {
+            var value = e.get_Value();
+            var message = HStringInterop.FromIntPtr(value);
+
+            adapter.OnWebMessageReceived(new WebMessageReceivedEventArgs { Body = message });
+        }
+    }
+
+    public void Invoke(IntPtr sender, IWebViewControlNewWindowRequestedEventArgs e)
+    {
+        if (weakAdapter.TryGetTarget(out var adapter)
+            && Uri.TryCreate(HStringInterop.FromIntPtr(e.get_Uri().get_AbsoluteUri()), UriKind.Absolute, out var uri))
+        {
+            var args = new WebViewNewWindowRequestedEventArgs { Request = uri };
+            adapter.OnNewWindowRequested(args);
+            if (args.Handled) e.put_Handled(true);
+        }
+    }
+
     protected override Guid[] GetIids() =>
     [
         typeof(IWebViewControlNavigationStartingHandler).GUID,
-        typeof(IWebViewControlNavigationCompletedHandler).GUID
+        typeof(IWebViewControlNavigationCompletedHandler).GUID,
+        typeof(IWebViewControlScriptNotifyHandler).GUID,
+        typeof(IWebViewControlNewWindowRequestedHandler).GUID
     ];
 }
