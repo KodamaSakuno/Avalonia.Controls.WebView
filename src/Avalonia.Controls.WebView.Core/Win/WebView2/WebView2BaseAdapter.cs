@@ -140,115 +140,34 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
         if (parent.HandleDescriptor != "HWND")
             throw new InvalidOperationException("IPlatformHandle.HandleDescriptor must be HWND");
 
-        //_controller.ParentWindow = parent.Handle;
+        _controller.SetParentWindow(parent.Handle);
     }
-
-    enum WebView2RunTimeType { kInstalled = 0x0, kRedistributable = 0x1 }
-    private unsafe int CreateEnv(IntPtr createEnvProc, WebView2RunTimeType runTimeType, string? userDataFolder, Options options, WebView2EnvHandler envCallback)
-    {
-        var callbackPtr = ComInterfaceMarshaller<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>.ConvertToUnmanaged(envCallback);
-        var optionsPtr = ComInterfaceMarshaller<ICoreWebView2EnvironmentOptions>.ConvertToUnmanaged(options);
-        try
-        {
-            // TODO, we might want to keep userDataFolder pinned until callback is called.
-            // But it's null anyway atm, so ignoring.
-            var createEnvFunc = (delegate* unmanaged[Stdcall]<int, WebView2RunTimeType, IntPtr, void*, void*, int>)createEnvProc;
-            fixed (char* userDataFolderPtr = userDataFolder)
-                return createEnvFunc(1, runTimeType, new IntPtr(userDataFolderPtr), optionsPtr, callbackPtr);
-        }
-        finally
-        {
-            ComInterfaceMarshaller<ICoreWebView2EnvironmentOptions>.Free(optionsPtr);
-            ComInterfaceMarshaller<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>.Free(callbackPtr);
-        }
-    }
-
-    public static bool IsAvailable => s_createEnv.Value != IntPtr.Zero;
-
-    private static readonly Lazy<IntPtr> s_createEnv = new(() =>
-    {
-        var webViewRuntime = ManagedWebView2Loader.FindWebView2Runtime();
-        if (webViewRuntime is null)
-        {
-            Logger.TryGet(LogEventLevel.Warning, "WebView")
-                ?.Log(null, "WebView2 runtime not found. WebView2 will not be initialized.");
-            return IntPtr.Zero;
-        }
-
-        var lib = NativeLibraryEx.Load(webViewRuntime);
-        if (!NativeLibraryEx.TryGetExport(lib, "CreateWebViewEnvironmentWithOptionsInternal", out var createEnvPtr))
-        {
-            Logger.TryGet(LogEventLevel.Warning, "WebView")
-                ?.Log(null , "CreateWebViewEnvironmentWithOptionsInternal not found in WebView2 runtime.");
-            return IntPtr.Zero;
-        }
-
-        return createEnvPtr;
-    });
 
     private async void Initialize(IPlatformHandle parentHost)
     {
-        var createEnvPtr = s_createEnv.Value;
-        if (createEnvPtr == IntPtr.Zero)
-            throw new InvalidOperationException("WebView2 runtime not found or CreateWebViewEnvironmentWithOptionsInternal not exported.");
-
-        ICoreWebView2Environment env;
-        var envCallback = new WebView2EnvHandler();
-        var options = new Options();
-        var res = CreateEnv(createEnvPtr, WebView2RunTimeType.kInstalled, null, options, envCallback);
-        if (res != 0)
-            throw new Win32Exception(res);
-        env = await envCallback.Result.Task;
-
+        var env = await CoreWebView2Environment.CreateAsync();
         var controller = await CreateWebView2Controller(env, parentHost.Handle);
-        // controller.get_CoreWebView2();
-        //await webView.AddScriptToExecuteOnDocumentCreatedAsync(
-        //    "function invokeCSharpAction(data){window.chrome.webview.postMessage(data);}");
+        var webView = controller.GetCoreWebView2();
+
+        //webView.AddScriptToExecuteOnDocumentCreated(
+          //  "function invokeCSharpAction(data){window.chrome.webview.postMessage(data);}", IntPtr.Zero);
         controller.SetIsVisible(1);
-        //controller.ShouldDetectMonitorScaleChanges = false;
+
+        if (controller is ICoreWebView2Controller3 controller3)
+        {
+            controller3.SetShouldDetectMonitorScaleChanges(0);
+        }
+
         _controller = controller;
 
         SizeChanged(default);
 
-        _subscriptions = AddHandlers(TryGetWebView2()!);
+        _subscriptions = AddHandlers(webView);
 
         IsInitialized = true;
         Initialized?.Invoke(this, EventArgs.Empty);
     }
 
-    [GeneratedComClass]
-    private partial class Options : CallbackBase, ICoreWebView2EnvironmentOptions
-    {
-        public string? GetAdditionalBrowserArguments() => null;
-
-        public void SetAdditionalBrowserArguments(string additionalBrowserArguments) {}
-
-        public string? GetLanguage() => null;
-
-        public void SetLanguage(string language) {}
-
-        public string GetTargetCompatibleBrowserVersion() => "135.0.3179.45";
-
-        public void SetTargetCompatibleBrowserVersion(string targetCompatibleBrowserVersion) { }
-
-        public int GetAllowSingleSignOnUsingOSPrimaryAccount() => 0;
-
-        public void SetAllowSingleSignOnUsingOSPrimaryAccount(int allowSingleSignOnUsingOSPrimaryAccount) {}
-    }
-
-    [GeneratedComClass]
-    private partial class WebView2EnvHandler : CallbackBase, ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler
-    {
-        public TaskCompletionSource<ICoreWebView2Environment> Result { get; } = new();
-        public void Invoke(int errorCode, ICoreWebView2Environment result)
-        {
-            if (errorCode != 0)
-                Result?.TrySetException(new Win32Exception(errorCode));
-            else
-                Result?.TrySetResult(result);
-        }
-    }
-    
     protected abstract Task<ICoreWebView2Controller> CreateWebView2Controller(ICoreWebView2Environment env, IntPtr handle);
 
     private Action AddHandlers(ICoreWebView2 webView)
