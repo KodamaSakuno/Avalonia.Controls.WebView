@@ -14,7 +14,8 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Clean packages
-      run: rm -rf ${{github.workspace}}/artifacts
+      shell: cmd
+      run: rmdir /s /q "${{github.workspace}}/artifacts"
  
     - name: CreateNugetPackages
       run: dotnet run --project ${{github.workspace}}/build/_build.csproj --target CreateNugetPackages --configuration Release --output ${{github.workspace}}/artifacts/packages/
