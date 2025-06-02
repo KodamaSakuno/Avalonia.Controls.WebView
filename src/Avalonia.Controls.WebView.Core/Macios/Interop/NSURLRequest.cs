@@ -19,6 +19,11 @@ internal class NSURLRequest : NSObject
         using var nsStr = NSString.Create(uri.AbsoluteUri);
         using var nsUrl = new NSUrl(nsStr);
         var handle = Libobjc.intptr_objc_msgSend(s_class, s_requestWithURL, nsUrl.Handle);
+        if (handle == default)
+        {
+            throw new ArgumentException($"Unable to create NSURLRequest from Uri (Host: {uri.Host})");
+        }
+
         return new NSURLRequest(handle, false);
     }
 }
