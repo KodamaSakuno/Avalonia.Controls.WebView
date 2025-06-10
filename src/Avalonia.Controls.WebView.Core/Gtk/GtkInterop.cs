@@ -14,7 +14,6 @@ internal static unsafe partial class GtkInterop
     private const string LibGtk = "libgtk-3.so.0";
     private const string LibGdk = "libgdk-3.so.0";
 
-
 #if NET7_0_OR_GREATER
     [LibraryImport(LibGLib, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial uint g_log_set_handler(string? logDomain, uint logLevels, IntPtr callback, IntPtr userData);
@@ -28,6 +27,9 @@ internal static unsafe partial class GtkInterop
 
     [DllImport(LibWebKit)]
     internal static extern IntPtr webkit_web_view_get_settings(IntPtr webView);
+
+    [DllImport(LibWebKit)]
+    internal static extern IntPtr webkit_web_view_get_context(IntPtr webView);
 
     [DllImport(LibWebKit)]
     internal static extern IntPtr webkit_web_view_get_uri(IntPtr webView);
@@ -335,6 +337,9 @@ internal static unsafe partial class GtkInterop
     internal static extern IntPtr webkit_uri_request_get_uri(IntPtr request);
 
     [DllImport(LibWebKit)]
+    internal static extern IntPtr webkit_uri_request_get_http_headers(IntPtr request);
+
+    [DllImport(LibWebKit)]
     internal static extern void webkit_option_menu_activate_item(IntPtr menu, uint index);
     [DllImport(LibWebKit)]
     internal static extern void webkit_option_menu_close(IntPtr menu);
@@ -356,6 +361,27 @@ internal static unsafe partial class GtkInterop
     internal static extern bool webkit_option_menu_item_is_group_child(IntPtr menuItem);
     [DllImport(LibWebKit)]
     internal static extern bool webkit_option_menu_item_is_group_label(IntPtr menuItem);
+
+    [DllImport(LibWebKit)]
+    public static extern void soup_message_headers_clear(IntPtr headers);
+
+    [DllImport(LibWebKit)]
+    public static extern void soup_message_headers_foreach(
+        IntPtr headers,
+        delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, void> func,
+        GCHandle user_data);
+
+    [DllImport(LibWebKit)]
+    public static extern IntPtr soup_message_headers_get_list(IntPtr headers, IntPtr name);
+
+    [DllImport(LibWebKit)]
+    public static extern IntPtr soup_message_headers_get_one(IntPtr headers, IntPtr name);
+
+    [DllImport(LibWebKit)]
+    public static extern void soup_message_headers_replace(IntPtr headers, IntPtr name, IntPtr value);
+
+    [DllImport(LibWebKit)]
+    public static extern void soup_message_headers_remove(IntPtr headers, IntPtr name);
 
     internal struct GError
     {

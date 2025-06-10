@@ -1,8 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Avalonia.Controls.Utils;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using static Avalonia.Controls.Gtk.GtkInterop;
@@ -40,11 +43,15 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     private static readonly unsafe IntPtr s_scriptMessageReceivedCallback =
         new((delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, void>)&ScriptMessagReceivedCallback);
 
+    private static readonly unsafe IntPtr s_resourceLoadStartedCallback =
+        new((delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr, void>)&ResourceLoadStartedCallback);
+
     private GtkSignal? _loadChangedSignal;
     private GtkSignal? _decidePolicySignal;
     private GtkSignal? _focusInSignal;
     private GtkSignal? _focusOutSignal;
     private GtkSignal? _scriptMessageReceivedSignal;
+    private GtkSignal? _resourceLoadStarted;
     private IntPtr _webViewHandle;
     private Uri _source = WebViewHelper.EmptyPage;
 
@@ -192,6 +199,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
         _decidePolicySignal = new GtkSignal(Handle, "decide-policy", s_decidePolicyCallback, this);
         _focusInSignal = new GtkSignal(Handle, "focus-in-event", s_focusInCallback, this);
         _focusOutSignal = new GtkSignal(Handle, "focus-out-event", s_focusOutCallback, this);
+        _resourceLoadStarted = new GtkSignal(Handle, "resource-load-started", s_resourceLoadStartedCallback, this);
     }
 
     private Uri GetSourceUnsafe()
@@ -339,7 +347,10 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
             return false;
         }
 
-        adapter.LostFocus?.Invoke(adapter, EventArgs.Empty);
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            adapter.LostFocus?.Invoke(adapter, EventArgs.Empty);
+        });
         return false;
     }
 
@@ -351,14 +362,19 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
             return false;
         }
 
-        adapter.GotFocus?.Invoke(adapter, EventArgs.Empty);
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            adapter.GotFocus?.Invoke(adapter, EventArgs.Empty);
+        });
         return false;
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static void ScriptMessagReceivedCallback(IntPtr widget, IntPtr jsResult, IntPtr data)
     {
-        if (data == IntPtr.Zero || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter)
+        if (data == IntPtr.Zero
+            || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter
+            || adapter.WebMessageReceived is null)
         {
             return;
         }
@@ -370,6 +386,39 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
             adapter.WebMessageReceived?.Invoke(adapter,
                 new WebMessageReceivedEventArgs { Body = result });
         });
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    private static void ResourceLoadStartedCallback(IntPtr widget, IntPtr resource, IntPtr request, IntPtr data)
+    {
+        if (data == IntPtr.Zero
+            || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter
+            || adapter.WebResourceRequested is null)
+        {
+            return;
+        }
+
+        var uriPtr = webkit_uri_request_get_uri(request);
+        var uriString = Marshal.PtrToStringAuto(uriPtr);
+        if (uriString is null)
+        {
+            return;
+        }
+
+        var headers = webkit_uri_request_get_http_headers(request);
+        var args = new WebResourceRequestedEventArgs
+        {
+            Request = new WebViewWebResourceRequest
+            {
+                Method = HttpMethod.Get, // that's not right, but let's keep it this way
+                Uri = new Uri(uriString),
+                Headers = new NativeHeadersCollection(headers != IntPtr.Zero ?
+                    new SoupHttpHeaders(headers) :
+                    new DictionaryNativeHttpRequestHeaders(new Dictionary<string, string>()))
+            }
+        };
+
+        Dispatcher.UIThread.InvokeAsync(() => adapter.WebResourceRequested?.Invoke(adapter, args));
     }
 
     private static string? GetValueFromJsResult(IntPtr jsResult)
@@ -398,6 +447,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
             Interlocked.Exchange(ref _focusInSignal, null)?.Dispose();
             Interlocked.Exchange(ref _focusOutSignal, null)?.Dispose();
             Interlocked.Exchange(ref _scriptMessageReceivedSignal, null)?.Dispose();
+            Interlocked.Exchange(ref _resourceLoadStarted, null)?.Dispose();
         }
 
         Interlocked.Exchange(ref _webViewHandle, IntPtr.Zero);

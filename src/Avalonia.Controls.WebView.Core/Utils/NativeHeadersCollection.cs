@@ -45,7 +45,7 @@ internal class DictionaryNativeHttpRequestHeaders(IReadOnlyDictionary<string, st
 
     public INativeHttpHeadersCollectionIterator GetIterator() => new Iterator(headers);
 
-    private class Iterator(IReadOnlyDictionary<string, string> dictionary) : INativeHttpHeadersCollectionIterator
+    public class Iterator(IReadOnlyDictionary<string, string> dictionary) : INativeHttpHeadersCollectionIterator
     {
         private readonly IEnumerator<KeyValuePair<string, string>> _enumerator = dictionary.GetEnumerator();
         private bool _initial = true;
