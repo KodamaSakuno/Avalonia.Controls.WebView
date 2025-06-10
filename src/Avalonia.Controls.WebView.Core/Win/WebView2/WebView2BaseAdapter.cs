@@ -57,6 +57,7 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
     public event EventHandler<WebViewNavigationStartingEventArgs>? NavigationStarted;
     public event EventHandler<WebViewNewWindowRequestedEventArgs>? NewWindowRequested;
     public event EventHandler<WebMessageReceivedEventArgs>? WebMessageReceived;
+    public event EventHandler<WebResourceRequestedEventArgs>? WebResourceRequested;
     public event EventHandler? Initialized;
 
     public bool GoBack()

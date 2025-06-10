@@ -102,6 +102,7 @@ internal sealed class WebView1Adapter : IWebViewAdapter, IWindowsWebView1Platfor
     public event EventHandler? Initialized;
     public event EventHandler<WebViewNewWindowRequestedEventArgs>? NewWindowRequested;
     public event EventHandler<WebMessageReceivedEventArgs>? WebMessageReceived;
+    public event EventHandler<WebResourceRequestedEventArgs>? WebResourceRequested;
     public event EventHandler<WebViewNavigationCompletedEventArgs>? NavigationCompleted;
     public event EventHandler<WebViewNavigationStartingEventArgs>? NavigationStarted;
 

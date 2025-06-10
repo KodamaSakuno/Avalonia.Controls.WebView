@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Http;
 using System.Threading.Tasks;
 using Avalonia.Controls.Rendering;
 using Avalonia.Input;
@@ -13,6 +14,18 @@ namespace Avalonia.Controls;
 public sealed class WebMessageReceivedEventArgs : EventArgs
 {
     public string? Body { get; init; }
+}
+
+public sealed class WebResourceRequestedEventArgs : EventArgs
+{
+    public required WebViewWebResourceRequest Request { get; init; }
+}
+
+public class WebViewWebResourceRequest
+{
+    public required IDictionary<string, string> Headers { get; init; }
+    public required HttpMethod Method { get; init; }
+    public required Uri Uri { get; init; }
 }
 
 public class WebViewNavigationEventArgs : EventArgs
@@ -162,6 +175,8 @@ internal interface IWebView
     /// </summary>
     event EventHandler<WebMessageReceivedEventArgs> WebMessageReceived;
 
+    event EventHandler<WebResourceRequestedEventArgs> WebResourceRequested;
+    
     /// <summary>
     ///     Navigates to the previous page in navigation history.
     /// </summary>
