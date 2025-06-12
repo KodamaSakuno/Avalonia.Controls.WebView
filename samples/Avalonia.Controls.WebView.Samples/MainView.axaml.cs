@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
@@ -203,6 +204,11 @@ public partial class MainView : UserControl
     private void NativeWebView_OnAdapterDestroyed(object? sender, WebViewAdapterEventArgs e)
     {
         LogList.Text += "\r\nNativeWebView_OnAdapterDestroyed " + e.TryGetPlatformHandle()?.GetType().Name;
+    }
+
+    private void NativeWebView_OnEnvironmentRequested(object? sender, WebViewEnvironmentRequestedEventArgs e)
+    {
+        LogList.Text += "\r\nNativeWebView_OnEnvironmentRequested";
     }
 }
 

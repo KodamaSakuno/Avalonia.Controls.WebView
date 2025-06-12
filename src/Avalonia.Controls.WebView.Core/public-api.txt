@@ -5,7 +5,6 @@ Avalonia.Controls.WebViewNavigationCompletedEventArgs
 Avalonia.Controls.WebViewNavigationEventArgs
 Avalonia.Controls.WebMessageReceivedEventArgs
 Avalonia.Controls.WebViewNewWindowRequestedEventArgs
-Avalonia.Controls.WebViewOptions
 Avalonia.Controls.Android.*
 Avalonia.Platform.*
 System.Runtime.*

@@ -27,7 +27,7 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
     private readonly WKNavigationDelegate _navDelegate;
     private readonly WKScriptMessageHandler _scriptHandler;
 
-    public MaciosWebViewAdapter()
+    public MaciosWebViewAdapter(AppleWKWebView2EnvironmentRequestedEventArgs options)
     {
         _scriptHandler = new WKScriptMessageHandler();
         _scriptHandler.DidReceiveScriptMessage += OnScriptHandlerOnDidReceiveScriptMessage;
@@ -37,11 +37,7 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
 
         _config.Preferences.MediaDevicesEnabled = true;
 
-        var enableDevTools = AvaloniaLocator.Current.GetService<WebViewOptions>()?.EnableDevTools == true;
-        if (enableDevTools)
-        {
-            _config.Preferences.DeveloperExtrasEnabled = true;
-        }
+        _config.Preferences.DeveloperExtrasEnabled = options.EnableDevTools;
 
         _navDelegate = new WKNavigationDelegate();
         _navDelegate.DidFinishNavigation += OnDelegateOnDidFinishNavigation;
@@ -52,7 +48,7 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
         _webView.BecomeFirstResponder += OnWebViewOnBecomeFirstResponder;
         _webView.ResignFirstResponder += OnWebViewOnResignFirstResponder;
 
-        if (OperatingSystemEx.IsIOS() && enableDevTools)
+        if (OperatingSystemEx.IsIOS() && options.EnableDevTools)
         {
             using var key = NSString.Create("inspectable");
             Libobjc.void_objc_msgSend(

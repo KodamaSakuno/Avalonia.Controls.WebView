@@ -8,7 +8,8 @@ using static Avalonia.Controls.Gtk.X11Interop;
 
 namespace Avalonia.Controls.Gtk;
 
-internal class GtkX11WebViewAdapter(IPlatformHandle parent) : GtkWebViewAdapter, IPlatformHandle
+internal class GtkX11WebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs environmentArgs, IPlatformHandle parent)
+    : GtkWebViewAdapter(environmentArgs), IPlatformHandle
 {
     private IntPtr _x11Window;
     private IntPtr _windowHandle;

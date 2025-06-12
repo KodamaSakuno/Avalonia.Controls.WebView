@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Avalonia.Platform;
 using Core = Avalonia.Controls;
 #if WPF
 using AvaloniaUI.Xpf.WpfAbstractions;

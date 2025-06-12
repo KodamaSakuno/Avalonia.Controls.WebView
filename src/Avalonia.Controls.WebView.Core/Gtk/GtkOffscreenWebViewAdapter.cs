@@ -13,8 +13,8 @@ using static Avalonia.Controls.Gtk.AvaloniaGtk;
 
 namespace Avalonia.Controls.Gtk;
 
-/// <param name="useGtkOffscreen">Debug only, useful for testing.</param>
-internal unsafe class GtkOffscreenWebViewAdapter(bool useGtkOffscreen = true) : GtkWebViewAdapter,
+internal unsafe class GtkOffscreenWebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs environmentArgs)
+    : GtkWebViewAdapter(environmentArgs),
     IWebViewAdapterWithOffscreenBuffer, IWebViewAdapterWithOffscreenInput
 {
     private static readonly IntPtr s_drawCallback =
@@ -41,7 +41,7 @@ internal unsafe class GtkOffscreenWebViewAdapter(bool useGtkOffscreen = true) : 
             }
 
             IntPtr pixbuf;
-            if (useGtkOffscreen)
+            if (EnvironmentArgs.ExperimentalOffscreen)
             {
                 pixbuf = gtk_offscreen_window_get_pixbuf(_windowHandle);
             }
@@ -106,7 +106,7 @@ internal unsafe class GtkOffscreenWebViewAdapter(bool useGtkOffscreen = true) : 
         _sizeRequest = containerSize;
         RunOnGlibThreadAsync(() =>
         {
-            if (useGtkOffscreen)
+            if (EnvironmentArgs.ExperimentalOffscreen)
                 gtk_window_set_default_size(_windowHandle, _sizeRequest.Width, _sizeRequest.Height);
             else
                 gtk_window_resize(_windowHandle, _sizeRequest.Width, _sizeRequest.Height);
@@ -253,7 +253,7 @@ internal unsafe class GtkOffscreenWebViewAdapter(bool useGtkOffscreen = true) : 
     {
         base.InitializeSafe();
 
-        _windowHandle = useGtkOffscreen ? gtk_offscreen_window_new() : gtk_window_new(0 /* GTK_WINDOW_TOPLEVEL */);
+        _windowHandle = EnvironmentArgs.ExperimentalOffscreen ? gtk_offscreen_window_new() : gtk_window_new(0 /* GTK_WINDOW_TOPLEVEL */);
         g_object_ref_sink(_windowHandle);
         gtk_window_set_default_size(_windowHandle, 100, 100);
 

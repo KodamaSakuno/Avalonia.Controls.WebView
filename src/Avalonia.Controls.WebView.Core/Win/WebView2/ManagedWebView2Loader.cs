@@ -12,7 +12,7 @@ internal static class ManagedWebView2Loader
 {
     private const string InstallKeyPath = @"Software\Microsoft\EdgeUpdate\ClientState\";
 
-    private static readonly Dictionary<string, string> s_channelInfo = new Dictionary<string, string>
+    private static readonly Dictionary<string, string> s_channelInfo = new()
     {
         { "{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}", "Stable" },
         { "{2CD8A007-E189-409D-A2C8-9AF4EF3C72AA}", "Beta" },
@@ -21,29 +21,40 @@ internal static class ManagedWebView2Loader
         { "{BE59E8FD-089A-411B-A3B0-051D9E417818}", "Internal" }
     };
 
+    private static Lazy<string?> s_regeditLocation = new(FindRuntimeInRegistryGlobal);
+
     /// <summary>
     /// Finds the WebView2 runtime installation path using registry
     /// </summary>
     /// <returns>Path to the WebView2 runtime DLL, or null if not found</returns>
-    public static string? FindWebView2Runtime()
+    public static string? FindWebView2Runtime(string? browserFolderOverride)
     {
-        if (Environment.GetEnvironmentVariable("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER") is
-            { Length: > 0 } browserFolder)
+        if (string.IsNullOrEmpty(browserFolderOverride))
         {
-            var dllPath = ComputeDllPath(browserFolder);
+            browserFolderOverride = Environment.GetEnvironmentVariable("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER");
+        }
+
+        if (browserFolderOverride is { Length: > 0 })
+        {
+            var dllPath = ComputeDllPath(browserFolderOverride);
             if (File.Exists(dllPath))
             {
                 Logger.TryGet(LogEventLevel.Information, "WebView")?
-                    .Log(null, "Found WebView2 runtime using WEBVIEW2_BROWSER_EXECUTABLE_FOLDER at: {RuntimePath}", dllPath);
+                    .Log(null, "Found WebView2 runtime using custom browser executable folder at: {RuntimePath}", dllPath);
                 return dllPath;
             }
             else
             {
                 Logger.TryGet(LogEventLevel.Warning, "WebView")?
-                    .Log(null, "EmbeddedBrowserWebView.dll cannot be found at WEBVIEW2_BROWSER_EXECUTABLE_FOLDER.");
+                    .Log(null, "EmbeddedBrowserWebView.dll cannot be found at custom browser executable folder.");
             }
         }
 
+        return s_regeditLocation.Value;
+    }
+
+    private static string? FindRuntimeInRegistryGlobal()
+    {
         // Try HKLM first (machine-wide installation)
         foreach (var channel in s_channelInfo)
         {
@@ -51,7 +62,7 @@ internal static class ManagedWebView2Loader
             if (!string.IsNullOrEmpty(runtimePath))
             {
                 Logger.TryGet(LogEventLevel.Information, "WebView")?
-                    .Log(null, "Found WebView2 {Channel} runtime at: {RuntimePath}", channel.Key, runtimePath);
+                    .Log(null, "Found WebView2 {Channel} runtime at: {RuntimePath} HKLM", channel.Key, runtimePath);
                 return runtimePath;
             }
         }
@@ -63,7 +74,7 @@ internal static class ManagedWebView2Loader
             if (!string.IsNullOrEmpty(runtimePath))
             {
                 Logger.TryGet(LogEventLevel.Information, "WebView")?
-                    .Log(null, "Found WebView2 {Channel} runtime at: {RuntimePath}", channel.Key, runtimePath);
+                    .Log(null, "Found WebView2 {Channel} runtime at: {RuntimePath} HKCU", channel.Key, runtimePath);
                 return runtimePath;
             }
         }

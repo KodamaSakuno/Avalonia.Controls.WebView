@@ -1,7 +1,6 @@
 ﻿#if AVALONIA || WPF
 using System;
 using System.Threading.Tasks;
-using Avalonia.Media;
 using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
 using AvInput = Avalonia.Input;
 using Core = Avalonia.Controls;
@@ -15,6 +14,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Windows.Media;
 
 #elif AVALONIA
+using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -30,10 +30,12 @@ namespace Avalonia.Xpf.Controls
     /// NativeWebView is a control that provides a native web browser implementation for applications.
     /// It wraps platform-specific web controls and provides a unified API for web browsing functionality.
     /// </summary>
-    public class NativeWebView : Control, Core.IWebView
+    // ReSharper disable RedundantNameQualifier
+    public class NativeWebView : Control, Core.IWebView, Core.IWebViewHolder
     {
         private bool _ignoreNavigation;
         private bool _ignoreFocusChanges;
+        private object? _initialSource;
 
         private EventHandler<Core.WebViewNavigationCompletedEventArgs>? _navigationCompleted;
         private EventHandler<Core.WebViewNavigationStartingEventArgs>? _navigationStarted;
@@ -50,7 +52,7 @@ namespace Avalonia.Xpf.Controls
             nameof(Source), new Uri("about:blank"));
 #endif
 
-        private readonly Core.INativeWebViewControlImpl _controlHostImpl;
+        private readonly TaskCompletionSource<INativeWebViewControlImpl> _controlHostImplTcs = new();
 
         static NativeWebView()
         {
@@ -64,28 +66,21 @@ namespace Avalonia.Xpf.Controls
         public NativeWebView()
         {
             Core.Licensing.ValidateWebView();
-
-#if AVALONIA
-            _controlHostImpl = (INativeWebViewControlImpl?)NativeWebViewCompositorHost.TryCreate() ?? new NativeWebViewControlHost();
-#else
-            _controlHostImpl = new NativeWebViewControlHost();
-#endif
-
-            _controlHostImpl.AdapterInitialized += ControlHostImplOnAdapterInitialized;
-            _controlHostImpl.AdapterDestroyed += ControlHostImplOnAdapterDeinitialized;
-#if AVALONIA
-            VisualChildren.Add((Control)_controlHostImpl);
-#elif WPF
-            IsVisibleChanged += OnIsVisibleChanged;
-            AddVisualChild((System.Windows.Media.Visual)_controlHostImpl);
-            AddLogicalChild((System.Windows.Media.Visual)_controlHostImpl);
-#endif
+            Initialized += OnInitialized;
         }
 
+        internal INativeWebViewControlImpl? TryGetImpl() =>
+            _controlHostImplTcs.Task is { Status: TaskStatus.RanToCompletion } t ? t.Result : null;
+
+        internal Core.IWebViewAdapter? TryGetAdapter() => TryGetImpl()?.TryGetAdapter();
+
 #if WPF
-        protected override int VisualChildrenCount => 1;
-        protected override System.Windows.Media.Visual? GetVisualChild(int index) => (System.Windows.Media.Visual)_controlHostImpl;
+        protected override int VisualChildrenCount => TryGetImpl() is not null ? 1 : 0;
+        protected override System.Windows.Media.Visual? GetVisualChild(int index) => (System.Windows.Media.Visual?)TryGetImpl();
 #endif
+
+        /// <inheritdoc/>
+        public event EventHandler<Core.WebViewEnvironmentRequestedEventArgs>? EnvironmentRequested;
 
         /// <inheritdoc/>
         public event EventHandler<Core.WebViewNavigationCompletedEventArgs>? NavigationCompleted
@@ -93,7 +88,7 @@ namespace Avalonia.Xpf.Controls
             add
             {
                 if (this._navigationCompleted is null
-                    && _controlHostImpl.TryGetAdapter() is { } adapter)
+                    && TryGetAdapter() is { } adapter)
                 {
                     adapter.NavigationCompleted += WebViewAdapterOnNavigationCompleted;
                 }
@@ -103,7 +98,7 @@ namespace Avalonia.Xpf.Controls
             {
                 this._navigationCompleted -= value;
                 if (this._navigationCompleted is null
-                    && _controlHostImpl.TryGetAdapter() is { } adapter)
+                    && TryGetAdapter() is { } adapter)
                 {
                     adapter.NavigationCompleted -= WebViewAdapterOnNavigationCompleted;
                 }
@@ -116,7 +111,7 @@ namespace Avalonia.Xpf.Controls
             add
             {
                 if (this._navigationStarted is null
-                    && _controlHostImpl.TryGetAdapter() is { } adapter)
+                    && TryGetAdapter() is { } adapter)
                 {
                     adapter.NavigationStarted += WebViewAdapterOnNavigationStarted;
                 }
@@ -126,7 +121,7 @@ namespace Avalonia.Xpf.Controls
             {
                 this._navigationStarted -= value;
                 if (this._navigationStarted is null
-                    && _controlHostImpl.TryGetAdapter() is { } adapter)
+                    && TryGetAdapter() is { } adapter)
                 {
                     adapter.NavigationStarted -= WebViewAdapterOnNavigationStarted;
                 }
@@ -139,7 +134,7 @@ namespace Avalonia.Xpf.Controls
             add
             {
                 if (this._newWindowRequested is null
-                    && _controlHostImpl.TryGetAdapter() is { } adapter)
+                    && TryGetAdapter() is { } adapter)
                 {
                     adapter.NewWindowRequested += WebViewAdapterOnNewWindowRequested;
                 }
@@ -149,7 +144,7 @@ namespace Avalonia.Xpf.Controls
             {
                 this._newWindowRequested -= value;
                 if (this._newWindowRequested is null
-                    && _controlHostImpl.TryGetAdapter() is { } adapter)
+                    && TryGetAdapter() is { } adapter)
                 {
                     adapter.NewWindowRequested -= WebViewAdapterOnNewWindowRequested;
                 }
@@ -162,7 +157,7 @@ namespace Avalonia.Xpf.Controls
             add
             {
                 if (this._webMessageReceived is null
-                    && _controlHostImpl.TryGetAdapter() is { } adapter)
+                    && TryGetAdapter() is { } adapter)
                 {
                     adapter.WebMessageReceived += WebViewAdapterOnWebMessageReceived;
                 }
@@ -172,7 +167,7 @@ namespace Avalonia.Xpf.Controls
             {
                 this._webMessageReceived -= value;
                 if (this._webMessageReceived is null
-                    && _controlHostImpl.TryGetAdapter() is { } adapter)
+                    && TryGetAdapter() is { } adapter)
                 {
                     adapter.WebMessageReceived -= WebViewAdapterOnWebMessageReceived;
                 }
@@ -185,7 +180,7 @@ namespace Avalonia.Xpf.Controls
             add
             {
                 if (this._webResourceRequested is null
-                    && _controlHostImpl.TryGetAdapter() is { } adapter)
+                    && TryGetAdapter() is { } adapter)
                 {
                     adapter.WebResourceRequested += WebViewAdapterOnWebResourceRequested;
                 }
@@ -195,21 +190,17 @@ namespace Avalonia.Xpf.Controls
             {
                 this._webResourceRequested -= value;
                 if (this._webResourceRequested is null
-                    && _controlHostImpl.TryGetAdapter() is { } adapter)
+                    && TryGetAdapter() is { } adapter)
                 {
                     adapter.WebResourceRequested -= WebViewAdapterOnWebResourceRequested;
                 }
             }
         }
 
-        /// <summary>
-        ///     AdapterInitialized dispatches after underlying webview adapter was initialized.
-        /// </summary>
+        /// <inheritdoc/>
         public event EventHandler<Core.WebViewAdapterEventArgs>? AdapterInitialized;
 
-        /// <summary>
-        ///     AdapterDestroyed dispatches after underlying webview adapter was destroyed.
-        /// </summary>
+        /// <inheritdoc/>
         public event EventHandler<Core.WebViewAdapterEventArgs>? AdapterDestroyed;
 
         /// <inheritdoc/>
@@ -219,92 +210,72 @@ namespace Avalonia.Xpf.Controls
             set => SetValue(SourceProperty, value);
         }
 
-        /// <summary>
-        /// Returns instance <see cref="Avalonia.Controls.NativeWebViewCommandManager"/> that allows executing common keyboard commands. Or null, if not supported by the platform.
-        /// </summary>
+        /// <inheritdoc/>
         public Core.NativeWebViewCommandManager? TryGetCommandManager() =>
-            _controlHostImpl.TryGetAdapter() switch
+            TryGetAdapter() switch
             {
                 Core.IWebViewAdapterWithCommands commands => new Core.NativeWebViewCommandManager(commands),
                 { } adapter => new Core.GenericCommands(adapter),
                 _ => null
             };
 
-        /// <summary>
-        /// Returns instance <see cref="Avalonia.Controls.NativeWebViewCookieManager"/> that allows reading and settings cookies. Or null, if not supported by the platform.
-        /// </summary>
+        /// <inheritdoc/>
         public Core.NativeWebViewCookieManager? TryGetCookieManager() =>
-            _controlHostImpl.TryGetAdapter() is Core.IWebViewAdapterWithCookieManager adapter ? new(adapter) : null;
+            TryGetAdapter() is Core.IWebViewAdapterWithCookieManager adapter ? new(adapter) : null;
 
         /// <inheritdoc/>
-        public bool CanGoBack => _controlHostImpl.TryGetAdapter()?.CanGoBack ?? false;
+        public bool CanGoBack => TryGetAdapter()?.CanGoBack ?? false;
 
         /// <inheritdoc/>
-        public bool CanGoForward => _controlHostImpl.TryGetAdapter()?.CanGoForward ?? false;
+        public bool CanGoForward => TryGetAdapter()?.CanGoForward ?? false;
 
         /// <inheritdoc/>
-        public bool GoBack() => _controlHostImpl.TryGetAdapter()?.GoBack() ?? false;
+        public bool GoBack() => TryGetAdapter()?.GoBack() ?? false;
 
         /// <inheritdoc/>
-        public bool GoForward() => _controlHostImpl.TryGetAdapter()?.GoForward() ?? false;
+        public bool GoForward() => TryGetAdapter()?.GoForward() ?? false;
 
         /// <inheritdoc/>
-        public async Task<string?> InvokeScript(string scriptName)
+        public Task<string?> InvokeScript(string script)
         {
-            try
-            {
-                var adapter = await _controlHostImpl.GetAdapterAsync();
-                return await adapter.InvokeScript(scriptName);
-            }
-            catch (OperationCanceledException)
-            {
-                return null;
-            }
+            if (TryGetAdapter() is { } adapter)
+                return adapter.InvokeScript(script);
+            else
+                return Task.FromException<string?>(new InvalidOperationException(
+                    "Unable to invoke script before any page was loaded. Listen for NavigationCompleted event."));
         }
 
         /// <inheritdoc/>
-        public async void Navigate(Uri url)
+        public void Navigate(Uri url)
         {
-            try
-            {
-                var adapter = await _controlHostImpl.GetAdapterAsync();
+            if (TryGetAdapter() is { } adapter)
                 adapter.Navigate(url);
-            }
-            catch (OperationCanceledException)
-            {
-            }
+            else
+                _initialSource = url;
         }
 
         /// <inheritdoc/>
-        public async void NavigateToString(string text)
+        public void NavigateToString(string text)
         {
-            try
-            {
-                var adapter = await _controlHostImpl.GetAdapterAsync();
+            if (TryGetAdapter() is { } adapter)
                 adapter.NavigateToString(text);
-            }
-            catch (OperationCanceledException)
-            {
-            }
+            else
+                _initialSource = text;
         }
 
         /// <inheritdoc/>
-        public bool Refresh() => _controlHostImpl.TryGetAdapter()?.Refresh() ?? false;
+        public bool Refresh() => TryGetAdapter()?.Refresh() ?? false;
 
         /// <inheritdoc/>
-        public bool Stop() => _controlHostImpl.TryGetAdapter()?.Stop() ?? false;
+        public bool Stop() => TryGetAdapter()?.Stop() ?? false;
 
-        /// <inheritdoc cref="Avalonia.Controls.WebViewAdapterEventArgs.TryGetPlatformHandle"/>
-        /// <remarks>
-        /// <para>Return handle can be used to access additional native APIs by using it with PInvokes.</para> 
-        /// <para>Should be used together with <see cref="AdapterInitialized"/> and <see cref="AdapterDestroyed"/>.</para>
-        /// </remarks>
-        public IPlatformHandle? TryGetPlatformHandle() => _controlHostImpl.TryGetAdapter();
+        /// <inheritdoc/>
+        public IPlatformHandle? TryGetPlatformHandle() => TryGetAdapter();
 
         /// <inheritdoc cref="BeginReparentingAsync" />
         public IDisposable BeginReparenting(bool yieldOnLayoutBeforeExiting = true)
         {
-            return _controlHostImpl.BeginReparenting(yieldOnLayoutBeforeExiting);
+            return TryGetImpl()?.BeginReparenting(yieldOnLayoutBeforeExiting) ?? EmptyDisposable.Instance;
         }
 
         /// <summary>
@@ -317,7 +288,7 @@ namespace Avalonia.Xpf.Controls
         /// <returns>Reparenting scope. Disposing returned value will re-evaluate <see cref="NativeWebView"/> native control parenting.</returns>
         public IAsyncDisposable BeginReparentingAsync()
         {
-            return _controlHostImpl.BeginReparentingAsync();
+            return TryGetImpl()?.BeginReparentingAsync() ?? EmptyDisposable.Instance;
         }
 
         private void WebViewAdapterOnWebMessageReceived(object? sender, Core.WebMessageReceivedEventArgs e)
@@ -352,6 +323,31 @@ namespace Avalonia.Xpf.Controls
         private void WebViewAdapterOnNewWindowRequested(object? sender, Core.WebViewNewWindowRequestedEventArgs e)
         {
             _newWindowRequested?.Invoke(this, e);
+        }
+
+        private void OnInitialized(object? sender, EventArgs e)
+        {
+            var adapterFactory = Core.WebViewAdapter.CreateFactory(args => EnvironmentRequested?.Invoke(this, args));
+            INativeWebViewControlImpl controlHostImpl = adapterFactory switch
+            {
+#if !WPF
+                Core.WebViewAdapter.CompositorHostAdapterFactory comp => new NativeWebViewCompositorHost(comp),
+#endif
+                Core.WebViewAdapter.NativeHostAdapterFactory native => new NativeWebViewControlHost(native),
+                _ => new EmptyNativeWebViewControlImpl()
+            };
+
+            controlHostImpl.AdapterInitialized += ControlHostImplOnAdapterInitialized;
+            controlHostImpl.AdapterDestroyed += ControlHostImplOnAdapterDeinitialized;
+#if AVALONIA
+            VisualChildren.Add((Control)controlHostImpl);
+#elif WPF
+            IsVisibleChanged += OnIsVisibleChanged;
+            AddVisualChild((System.Windows.Media.Visual)controlHostImpl);
+            AddLogicalChild((System.Windows.Media.Visual)controlHostImpl);
+#endif
+
+            _controlHostImplTcs.TrySetResult(controlHostImpl);
         }
 
         private void WithFocusOnGotFocus(object? sender, EventArgs e)
@@ -428,6 +424,11 @@ namespace Avalonia.Xpf.Controls
             {
                 withFocus.LostFocus += WithFocusOnLostFocus;
                 withFocus.GotFocus += WithFocusOnGotFocus;
+
+                if (IsFocused)
+                {
+                    withFocus.Focus();
+                }
             }
 
             if (adapter is Core.IWebViewAdapterWithInputRedirect withInput)
@@ -435,15 +436,13 @@ namespace Avalonia.Xpf.Controls
                 withInput.Input += WithInputOnInput;
             }
 
-#if WPF
-            if (ReadLocalValue(SourceProperty) != DependencyProperty.UnsetValue
-#elif AVALONIA
-            if (IsSet(SourceProperty)
-#endif
-                && Source is { } source
-                && adapter.Source != source)
+            if (_initialSource is Uri url)
             {
-                adapter.Navigate(source);
+                adapter.Navigate(url);
+            }
+            else if (_initialSource is string html)
+            {
+                adapter.NavigateToString(html);
             }
 
             AdapterInitialized?.Invoke(this, new Core.WebViewAdapterEventArgs(adapter));
@@ -462,19 +461,19 @@ namespace Avalonia.Xpf.Controls
 
         private void OnIsVisibleChanged(object? sender, DependencyPropertyChangedEventArgs e)
         {
-            _ = Dispatcher.InvokeAsync(() => _controlHostImpl.TryGetAdapter()?.SizeChanged(PixelSize.FromSizeWithDpi(new Size(RenderSize.Width, RenderSize.Height), VisualTreeHelper.GetDpi(this).DpiScaleX)), DispatcherPriority.Background);
+            _ = Dispatcher.InvokeAsync(() => TryGetAdapter()?.SizeChanged(PixelSize.FromSizeWithDpi(new Size(RenderSize.Width, RenderSize.Height), VisualTreeHelper.GetDpi(this).DpiScaleX)), DispatcherPriority.Background);
         }
 
         protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
         {
             base.OnRenderSizeChanged(sizeInfo);
-            _controlHostImpl.TryGetAdapter()?.SizeChanged(PixelSize.FromSizeWithDpi(new Size(sizeInfo.NewSize.Width, sizeInfo.NewSize.Height), VisualTreeHelper.GetDpi(this).DpiScaleX));
+            TryGetAdapter()?.SizeChanged(PixelSize.FromSizeWithDpi(new Size(sizeInfo.NewSize.Width, sizeInfo.NewSize.Height), VisualTreeHelper.GetDpi(this).DpiScaleX));
         }
 
         protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
         {
             base.OnDpiChanged(oldDpi, newDpi);
-            _controlHostImpl.TryGetAdapter()?.SizeChanged(PixelSize.FromSizeWithDpi(new Size(RenderSize.Width, RenderSize.Height), newDpi.DpiScaleX));
+            TryGetAdapter()?.SizeChanged(PixelSize.FromSizeWithDpi(new Size(RenderSize.Width, RenderSize.Height), newDpi.DpiScaleX));
         }
 
 #elif AVALONIA
@@ -492,7 +491,7 @@ namespace Avalonia.Xpf.Controls
             }
             else if (change.Property == IsVisibleProperty)
             {
-                _ = Dispatcher.UIThread.InvokeAsync(() => _controlHostImpl.TryGetAdapter()?.SizeChanged(
+                _ = Dispatcher.UIThread.InvokeAsync(() => TryGetAdapter()?.SizeChanged(
                     PixelSize.FromSize(Bounds.Size, TopLevel.GetTopLevel(this)!.RenderScaling)), DispatcherPriority.Background);
             }
         }
@@ -500,7 +499,7 @@ namespace Avalonia.Xpf.Controls
         protected override void OnSizeChanged(SizeChangedEventArgs e)
         {
             base.OnSizeChanged(e);
-            _controlHostImpl.TryGetAdapter()?.SizeChanged(PixelSize.FromSize(e.NewSize, TopLevel.GetTopLevel(this)!.RenderScaling));
+            TryGetAdapter()?.SizeChanged(PixelSize.FromSize(e.NewSize, TopLevel.GetTopLevel(this)!.RenderScaling));
         }
 #endif
 
@@ -512,7 +511,7 @@ namespace Avalonia.Xpf.Controls
         {
             base.OnGotFocus(e);
             if (!_ignoreFocusChanges
-                && _controlHostImpl.TryGetAdapter() is Core.IWebViewAdapterWithFocus adapterWithFocus)
+                && TryGetAdapter() is Core.IWebViewAdapterWithFocus adapterWithFocus)
             {
                 _ = adapterWithFocus.Focus();
             }
@@ -526,7 +525,7 @@ namespace Avalonia.Xpf.Controls
         {
             base.OnLostFocus(e);
             if (!_ignoreFocusChanges
-                && _controlHostImpl.TryGetAdapter() is Core.IWebViewAdapterWithFocus adapterWithFocus)
+                && TryGetAdapter() is Core.IWebViewAdapterWithFocus adapterWithFocus)
             {
                 _ = adapterWithFocus.ResignFocus();
             }
@@ -543,7 +542,7 @@ namespace Avalonia.Xpf.Controls
 
         protected override void OnPointerPressed(PointerPressedEventArgs e)
         {
-            if (_controlHostImpl.TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
+            if (TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
             {
                 e.Handled = input.PointerInput(e.GetCurrentPoint(this), e.KeyModifiers);
             }
@@ -552,7 +551,7 @@ namespace Avalonia.Xpf.Controls
 
         protected override void OnPointerReleased(PointerReleasedEventArgs e)
         {
-            if (_controlHostImpl.TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
+            if (TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
             {
                 e.Handled = input.PointerInput(e.GetCurrentPoint(this), e.KeyModifiers);
             }
@@ -561,7 +560,7 @@ namespace Avalonia.Xpf.Controls
 
         protected override void OnPointerMoved(PointerEventArgs e)
         {
-            if (_controlHostImpl.TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
+            if (TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
             {
                 e.Handled = input.PointerInput(e.GetCurrentPoint(this), e.KeyModifiers);
             }
@@ -570,7 +569,7 @@ namespace Avalonia.Xpf.Controls
 
         protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
         {
-            if (_controlHostImpl.TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
+            if (TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
             {
                 e.Handled = input.PointerWheelInput(e.Delta, e.GetCurrentPoint(this), e.KeyModifiers);
             }
@@ -579,7 +578,7 @@ namespace Avalonia.Xpf.Controls
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
-            if (_controlHostImpl.TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
+            if (TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
             {
                 e.Handled = input.KeyInput(true, e.PhysicalKey, e.KeySymbol, e.KeyModifiers);
             }
@@ -588,7 +587,7 @@ namespace Avalonia.Xpf.Controls
 
         protected override void OnKeyUp(KeyEventArgs e)
         {
-            if (_controlHostImpl.TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
+            if (TryGetAdapter() is IWebViewAdapterWithOffscreenInput input)
             {
                 e.Handled = input.KeyInput(false, e.PhysicalKey, e.KeySymbol, e.KeyModifiers);
             }
