@@ -7,6 +7,8 @@ namespace Avalonia.Platform;
 
 public sealed class WindowsWebView2EnvironmentRequestedEventArgs : WebViewEnvironmentRequestedEventArgs
 {
+    public bool PreferWebView1Instead { get; set; }
+
     public IntPtr ExplicitEnvironment { get; set; }
 
     public string? ProfileName { get; set; }

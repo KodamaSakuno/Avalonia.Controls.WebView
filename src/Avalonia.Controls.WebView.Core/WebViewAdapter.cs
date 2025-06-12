@@ -52,26 +52,33 @@ internal static class WebViewAdapter
 
         if (OperatingSystemEx.IsWindows())
         {
-            var args = new WindowsWebView2EnvironmentRequestedEventArgs();
-            environmentRequested(args);
-            if (Win.WebView2.CoreWebView2Environment.TryFindWebView2Runtime(args.BrowserExecutableFolder)
-                != IntPtr.Zero)
             {
-                return new NativeHostAdapterFactory((parent, createChild) =>
+                var args = new WindowsWebView2EnvironmentRequestedEventArgs();
+                environmentRequested(args);
+                if (!args.PreferWebView1Instead
+                    && Win.WebView2.CoreWebView2Environment.TryFindWebView2Runtime(args.BrowserExecutableFolder) !=
+                    IntPtr.Zero)
                 {
-                    if (OperatingSystemEx.IsWindows())
-                        return new Win.WebView2.WebView2HwndAdapter(createChild(parent), args);
-                    throw new PlatformNotSupportedException();
-                });
+                    return new NativeHostAdapterFactory((parent, createChild) =>
+                    {
+                        if (OperatingSystemEx.IsWindows())
+                            return new Win.WebView2.WebView2HwndAdapter(createChild(parent), args);
+                        throw new PlatformNotSupportedException();
+                    });
+                }
             }
-            if (Win.WebView1.WebView1Adapter.IsAvailable)
             {
-                return new NativeHostAdapterFactory((parent, createChild) =>
+                var args = new WindowsWebView1EnvironmentRequestedEventArgs();
+                environmentRequested(args);
+                if (Win.WebView1.WebView1Process.GetOrCreateProcess(args) is { } process)
                 {
-                    if (OperatingSystemEx.IsWindows())
-                        return new Win.WebView1.WebView1Adapter(createChild(parent));
-                    throw new PlatformNotSupportedException();
-                });
+                    return new NativeHostAdapterFactory((parent, createChild) =>
+                    {
+                        if (OperatingSystemEx.IsWindows())
+                            return new Win.WebView1.WebView1Adapter(createChild(parent), process);
+                        throw new PlatformNotSupportedException();
+                    });
+                }
             }
         }
 
