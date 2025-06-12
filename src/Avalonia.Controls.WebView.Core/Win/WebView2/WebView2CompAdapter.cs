@@ -10,7 +10,8 @@ namespace Avalonia.Controls.Win.WebView2;
 [SupportedOSPlatform("windows10.0.17763.0")]
 internal partial class WebView2CompAdapter : WebView2BaseAdapter
 {
-    private WebView2CompAdapter(IPlatformHandle handle) : base(handle)
+    private WebView2CompAdapter(IPlatformHandle handle, WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
+        : base(handle, environmentArgs)
     {
     }
 
@@ -18,7 +19,8 @@ internal partial class WebView2CompAdapter : WebView2BaseAdapter
 
     public override string HandleDescriptor => "Windows.UI.Composition.ContainerVisual";
 
-    protected override async Task<ICoreWebView2Controller> CreateWebView2Controller(ICoreWebView2Environment env, IntPtr handle)
+    protected override async Task<ICoreWebView2Controller> CreateWebView2Controller(ICoreWebView2Environment env,
+        IntPtr handle, WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
     {
         if (env is ICoreWebView2Environment3 environment3)
         {

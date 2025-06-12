@@ -9,6 +9,7 @@ using Windows.Win32;
 using Windows.Win32.Foundation;
 using Avalonia.Controls.Platform;
 using Avalonia.Controls.Win.WebView2.Interop;
+using Avalonia.Logging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 
@@ -21,9 +22,9 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
     private ICoreWebView2Controller? _controller;
     private Action? _subscriptions;
 
-    protected WebView2BaseAdapter(IPlatformHandle parent)
+    protected WebView2BaseAdapter(IPlatformHandle parent, WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
     {
-        Initialize(parent);
+        Initialize(parent, environmentArgs);
     }
 
     public abstract IntPtr Handle { get; }
@@ -174,40 +175,49 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
     internal EventHandler<WebResourceRequestedEventArgs>? GetWebResourceRequested() => _webResourceRequested;
     internal EventHandler<WebViewNewWindowRequestedEventArgs>? GetNewWindowRequested() => NewWindowRequested;
 
-    private async void Initialize(IPlatformHandle parentHost)
+    private async void Initialize(IPlatformHandle parentHost, WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
     {
-        var env = await CoreWebView2Environment.CreateAsync();
-        var controller = await CreateWebView2Controller(env, parentHost.Handle);
-        var webView = controller.GetCoreWebView2();
-
-        var addScriptCompletion = new AddScriptToExecuteOnDocumentCreatedCompletedHandler();
-        webView.AddScriptToExecuteOnDocumentCreated(
-            "function invokeCSharpAction(data){window.chrome.webview.postMessage(data);}", addScriptCompletion);
-        _ = await addScriptCompletion.Result.Task;
-
-        controller.SetIsVisible(1);
-
-        if (controller is ICoreWebView2Controller3 controller3)
+        try
         {
-            controller3.SetShouldDetectMonitorScaleChanges(0);
+            var env = await CoreWebView2Environment.CreateAsync(environmentArgs);
+            var controller = await CreateWebView2Controller(env, parentHost.Handle, environmentArgs);
+            var webView = controller.GetCoreWebView2();
+
+            var addScriptCompletion = new AddScriptToExecuteOnDocumentCreatedCompletedHandler();
+            webView.AddScriptToExecuteOnDocumentCreated(
+                "function invokeCSharpAction(data){window.chrome.webview.postMessage(data);}", addScriptCompletion);
+            _ = await addScriptCompletion.Result.Task;
+
+            controller.SetIsVisible(1);
+
+            if (controller is ICoreWebView2Controller3 controller3)
+            {
+                controller3.SetShouldDetectMonitorScaleChanges(0);
+            }
+
+            _controller = controller;
+
+            SizeChanged(default);
+
+            _subscriptions = AddHandlers(webView);
+
+            if (_webResourceRequested is not null)
+            {
+                webView.AddWebResourceRequestedFilter("*", 0);
+            }
+
+            IsInitialized = true;
+            Initialized?.Invoke(this, EventArgs.Empty);
         }
-
-        _controller = controller;
-
-        SizeChanged(default);
-
-        _subscriptions = AddHandlers(webView);
-
-        if (_webResourceRequested is not null)
+        catch (Exception ex)
         {
-            webView.AddWebResourceRequestedFilter("*", 0);
+            Logger.TryGet(LogEventLevel.Error, "WebView")?
+                .Log(null, "WebView2 initialization failed with unhandled exception", ex);
         }
-
-        IsInitialized = true;
-        Initialized?.Invoke(this, EventArgs.Empty);
     }
 
-    protected abstract Task<ICoreWebView2Controller> CreateWebView2Controller(ICoreWebView2Environment env, IntPtr handle);
+    protected abstract Task<ICoreWebView2Controller> CreateWebView2Controller(ICoreWebView2Environment env,
+        IntPtr handle, WindowsWebView2EnvironmentRequestedEventArgs environmentArgs);
 
     private Action AddHandlers(ICoreWebView2 webView)
     {

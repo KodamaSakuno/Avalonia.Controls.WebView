@@ -2,9 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using Avalonia.Media;
 using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
-using Core = Avalonia.Controls;
 #if WPF
 using Avalonia.Controls;
 using System.Windows;
@@ -20,12 +18,15 @@ namespace Avalonia.Controls
 namespace Avalonia.Xpf.Controls
 #endif
 {
-    internal class NativeWebViewControlHost : NativeControlHost, INativeWebViewControlImpl
+    internal class NativeWebViewControlHost(WebViewAdapter.NativeHostAdapterFactory factory) : NativeControlHost, INativeWebViewControlImpl
     {
-        private TaskCompletionSource<IWebViewAdapter> _webViewReadyCompletion = new();
+        private TaskCompletionSource<IWebViewAdapter?>? _webViewReadyCompletion;
         private ReparentingScope? _reparentingScope;
 
+        /// <inheritdoc />
         public event EventHandler<IWebViewAdapter>? AdapterInitialized;
+
+        /// <inheritdoc />
         public event EventHandler<IWebViewAdapter>? AdapterDestroyed;
 
         protected override IPlatformHandle CreateNativeControlCore(IPlatformHandle parent)
@@ -35,40 +36,8 @@ namespace Avalonia.Xpf.Controls
                 return _reparentingScope.ReparentRequested(parent);
             }
 
-            IWebViewAdapter? adapter = null;
-
-            if (OperatingSystemEx.IsMacOS() || OperatingSystemEx.IsIOS())
-            {
-                adapter = new Core.Macios.MaciosWebViewAdapter();
-            }
-            else if (OperatingSystemEx.IsWindows()
-                     && Core.Win.WebView2.CoreWebView2Environment.IsAvailable)
-            {
-                adapter = new Core.Win.WebView2.WebView2HwndAdapter(base.CreateNativeControlCore(parent));
-            }
-            else if (OperatingSystemEx.IsWindows() && Core.Win.WebView1.WebView1Adapter.IsAvailable)
-            {
-                adapter = new Core.Win.WebView1.WebView1Adapter(base.CreateNativeControlCore(parent));
-            }
-            else if (OperatingSystemEx.IsLinux())
-            {
-                adapter = new Core.Gtk.GtkX11WebViewAdapter(parent);
-            }
-            // else if (OperatingSystemEx.IsBrowser())
-            // {
-            //     adapter = new Core.Browser.BrowserIFrameAdapter();
-            // } else
-#if ANDROID
-            else if (OperatingSystem.IsAndroid())
-            {
-                adapter = new Android.AndroidWebViewAdapter(parent);
-            }
-#endif
-            else if (adapter is null)
-            {
-                return base.CreateNativeControlCore(parent);
-            }
-
+            _webViewReadyCompletion = new TaskCompletionSource<IWebViewAdapter?>();
+            var adapter = factory.Invoke(parent, p => base.CreateNativeControlCore(p));
             if (adapter.IsInitialized)
             {
                 WebViewAdapterOnInitialized(adapter, EventArgs.Empty);
@@ -81,9 +50,12 @@ namespace Avalonia.Xpf.Controls
             return adapter;
         }
 
-        public Task<IWebViewAdapter> GetAdapterAsync() => _webViewReadyCompletion.Task;
+        /// <inheritdoc />
+        public Task<IWebViewAdapter?> GetAdapterAsync() =>
+            _webViewReadyCompletion?.Task ?? Task.FromResult<IWebViewAdapter?>(null);
 
-        public IWebViewAdapter? TryGetAdapter() => _webViewReadyCompletion.Task.Status == TaskStatus.RanToCompletion ?
+        /// <inheritdoc />
+        public IWebViewAdapter? TryGetAdapter() => _webViewReadyCompletion?.Task.Status == TaskStatus.RanToCompletion ?
             _webViewReadyCompletion.Task.Result :
             null;
 
@@ -99,8 +71,8 @@ namespace Avalonia.Xpf.Controls
 
                 Debug.Assert(!(TryGetAdapter() is { } oldAdapter && oldAdapter != adapter));
 
-                _webViewReadyCompletion.TrySetCanceled();
-                _webViewReadyCompletion = new TaskCompletionSource<IWebViewAdapter>();
+                _webViewReadyCompletion?.TrySetCanceled();
+                _webViewReadyCompletion = null;
                 adapter.Initialized -= WebViewAdapterOnInitialized;
                 AdapterDestroyed?.Invoke(this, adapter);
                 adapter.Dispose();
@@ -110,11 +82,11 @@ namespace Avalonia.Xpf.Controls
         private void WebViewAdapterOnInitialized(object? sender, EventArgs e)
         {
             var adapter = (IWebViewAdapter)sender!;
-            _webViewReadyCompletion.TrySetResult(adapter);
+            _webViewReadyCompletion?.TrySetResult(adapter);
             AdapterInitialized?.Invoke(this, adapter);
         }
 
-        /// <inheritdoc cref="NativeWebView.BeginReparenting"/>.
+        /// <inheritdoc />
         public IDisposable BeginReparenting(bool yieldOnLayoutBeforeExiting = true)
         {
             if (_reparentingScope is not null)
@@ -123,7 +95,7 @@ namespace Avalonia.Xpf.Controls
             return _reparentingScope = new ReparentingScope(this, yieldOnLayoutBeforeExiting);
         }
 
-        /// <inheritdoc cref="NativeWebView.BeginReparentingAsync"/>.
+        /// <inheritdoc />
         public IAsyncDisposable BeginReparentingAsync()
         {
             if (_reparentingScope is not null)

@@ -18,6 +18,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\Avalonia.Controls.WebView\EmptyDisposable.cs">
+      <Link>EmptyDisposable.cs</Link>
+    </Compile>
+    <Compile Include="..\Avalonia.Controls.WebView\EmptyNativeWebViewControlImpl.cs">
+      <Link>EmptyNativeWebViewControlImpl.cs</Link>
+    </Compile>
     <Compile Include="..\Avalonia.Controls.WebView\INativeWebViewControlImpl.cs">
       <Link>INativeWebViewControlImpl.cs</Link>
     </Compile>

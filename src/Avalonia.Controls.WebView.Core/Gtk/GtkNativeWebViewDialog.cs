@@ -19,28 +19,25 @@ internal sealed class GtkNativeWebViewDialog : INativeWebViewDialog, IGtkWebView
     private bool _canUserResizeTemp = true;
     private bool _isShown;
 
-    public GtkNativeWebViewDialog()
+    public GtkNativeWebViewDialog(GtkWebViewEnvironmentRequestedEventArgs args)
     {
-        _windowHandle = RunOnGlibThread(static () =>
+        RunOnGlibThread(() =>
         {
-            var window = gtk_window_new(0 /* GTK_WINDOW_TOPLEVEL */);
-            gtk_window_set_default_size(window, 800, 600);
-            return window;
+            _windowHandle = gtk_window_new(0 /* GTK_WINDOW_TOPLEVEL */);
+            gtk_window_set_default_size(_windowHandle, 800, 600);
+            _signal = new GtkSignal(_windowHandle, "delete-event", s_deleteEventCallback, this);
         });
 
-        _nativeWebView = new GtkWebViewAdapter();
+        _nativeWebView = new GtkWebViewAdapter(args);
 
         _ = RunOnGlibThread(() =>
         {
-            _signal = new GtkSignal(_windowHandle, "delete-event", s_deleteEventCallback, this);
             var scrolled = gtk_scrolled_window_new(IntPtr.Zero, IntPtr.Zero);
             gtk_container_add(scrolled, _nativeWebView.WebViewHandle);
             gtk_container_add(_windowHandle, scrolled);
             return 0;
         });
     }
-
-    public IWebView WebView => _nativeWebView;
 
     public bool CanUserResize
     {
@@ -59,6 +56,8 @@ internal sealed class GtkNativeWebViewDialog : INativeWebViewDialog, IGtkWebView
     }
 
     public event EventHandler? Closing;
+
+    public IWebViewAdapter? TryGetAdapter() => _nativeWebView;
 
     public string? Title
     {
@@ -148,6 +147,13 @@ internal sealed class GtkNativeWebViewDialog : INativeWebViewDialog, IGtkWebView
         return true;
     }
 
+    public event EventHandler<WebViewAdapterEventArgs>? AdapterInitialized;
+    public event EventHandler<WebViewAdapterEventArgs>? AdapterDestroyed;
+    public event EventHandler<WebViewEnvironmentRequestedEventArgs>? EnvironmentRequested;
+
+    public NativeWebViewCommandManager? TryGetCommandManager() => new GenericCommands(_nativeWebView);
+    public NativeWebViewCookieManager? TryGetCookieManager() => null;
+
     public IPlatformHandle? TryGetPlatformHandle() => this;
 
     private void Dispose(bool disposing)
@@ -158,6 +164,7 @@ internal sealed class GtkNativeWebViewDialog : INativeWebViewDialog, IGtkWebView
             Close();
             _nativeWebView.Dispose();
             _disposed = true;
+            AdapterDestroyed?.Invoke(this, new WebViewAdapterEventArgs(this));
         }
     }
 

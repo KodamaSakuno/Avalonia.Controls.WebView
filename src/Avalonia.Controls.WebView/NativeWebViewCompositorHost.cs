@@ -14,37 +14,33 @@ namespace Avalonia.Controls;
 namespace Avalonia.Xpf.Controls;
 #endif
 
-internal class NativeWebViewCompositorHost : Control, INativeWebViewControlImpl
+internal class NativeWebViewCompositorHost(WebViewAdapter.CompositorHostAdapterFactory factory) : Control, INativeWebViewControlImpl
 {
-    private readonly Func<NativeWebViewCompositorHost, IWebViewAdapterWithOffscreenBuffer> _webViewFactory;
-    private TaskCompletionSource<IWebViewAdapterWithOffscreenBuffer> _webViewReadyCompletion = new();
+    private TaskCompletionSource<IWebViewAdapterWithOffscreenBuffer?>? _webViewReadyCompletion;
     //private ReparentingScope? _reparentingScope;
     private bool _firstDraw;
     private CompositionCustomVisual? _customVisual;
-    private readonly BitmapFrameChain _frameChain;
+    private readonly BitmapFrameChain _frameChain = new();
 
-    private NativeWebViewCompositorHost(Func<NativeWebViewCompositorHost, IWebViewAdapterWithOffscreenBuffer> webViewFactory)
-    {
-        _webViewFactory = webViewFactory;
-        _frameChain = new BitmapFrameChain();
-    }
-
-    public static NativeWebViewCompositorHost? TryCreate()
-    {
-        if (WebViewHelper.GtkOffscreenAvailable() && OperatingSystemEx.IsLinux())
-            return new NativeWebViewCompositorHost(c => new GtkOffscreenAvaloniaWebViewAdapter(c));
-        return null;
-    }
-
+    /// <inheritdoc />
     public event EventHandler<IWebViewAdapter>? AdapterInitialized;
+
+    /// <inheritdoc />
     public event EventHandler<IWebViewAdapter>? AdapterDestroyed;
 
-    public IWebViewAdapter? TryGetAdapter() => _webViewReadyCompletion.Task.Status == TaskStatus.RanToCompletion ?
+    /// <inheritdoc />
+    public IWebViewAdapter? TryGetAdapter() => _webViewReadyCompletion?.Task.Status == TaskStatus.RanToCompletion ?
         _webViewReadyCompletion.Task.Result :
         null;
-    public async Task<IWebViewAdapter> GetAdapterAsync() => await _webViewReadyCompletion.Task;
 
+    /// <inheritdoc />
+    public async Task<IWebViewAdapter?> GetAdapterAsync() =>
+        _webViewReadyCompletion is null ? null : await _webViewReadyCompletion.Task;
+
+    /// <inheritdoc />
     public IDisposable BeginReparenting(bool yieldOnLayoutBeforeExiting) => EmptyDisposable.Instance;
+
+    /// <inheritdoc />
     public IAsyncDisposable BeginReparentingAsync() => EmptyDisposable.Instance;
 
     protected override Size ArrangeOverride(Size finalSize)
@@ -61,8 +57,8 @@ internal class NativeWebViewCompositorHost : Control, INativeWebViewControlImpl
     {
         base.OnAttachedToVisualTree(e);
 
-        var adapter = _webViewFactory(this);
-
+        _webViewReadyCompletion = new TaskCompletionSource<IWebViewAdapterWithOffscreenBuffer?>();
+        var adapter = factory.Invoke(this);
         var compositorVisual = ElementComposition.GetElementVisual(this)!;
         _firstDraw = true;
         _customVisual = compositorVisual.Compositor.CreateCustomVisual(new VisualHandler());
@@ -86,8 +82,8 @@ internal class NativeWebViewCompositorHost : Control, INativeWebViewControlImpl
 
         var adapter = (IWebViewAdapterWithOffscreenBuffer?)TryGetAdapter();
 
-        _webViewReadyCompletion.TrySetCanceled();
-        _webViewReadyCompletion = new TaskCompletionSource<IWebViewAdapterWithOffscreenBuffer>();
+        _webViewReadyCompletion?.TrySetCanceled();
+        _webViewReadyCompletion = null;
 
         if (adapter is not null)
         {
@@ -108,7 +104,7 @@ internal class NativeWebViewCompositorHost : Control, INativeWebViewControlImpl
     private void WebViewAdapterOnInitialized(object? sender, EventArgs e)
     {
         var adapter = (IWebViewAdapterWithOffscreenBuffer)sender!;
-        _webViewReadyCompletion.TrySetResult(adapter);
+        _webViewReadyCompletion?.TrySetResult(adapter);
         AdapterInitialized?.Invoke(this, adapter);
         adapter.DrawRequested += OffscreenAdapter_OnDrawRequested;
     }
@@ -168,20 +164,6 @@ internal class NativeWebViewCompositorHost : Control, INativeWebViewControlImpl
             {
                 drawingContext.DrawBitmap(frame, GetRenderBounds());
             }
-        }
-    }
-
-    private class EmptyDisposable : IDisposable, IAsyncDisposable
-    {
-        public static EmptyDisposable Instance { get; } = new();
-
-        public void Dispose()
-        {
-        }
-
-        public ValueTask DisposeAsync()
-        {
-            return default;
         }
     }
 }

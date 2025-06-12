@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.InteropServices.Marshalling;
 using System.Runtime.Versioning;
@@ -6,8 +7,9 @@ using System.Threading.Tasks;
 using Avalonia.Controls.Utils;
 using Avalonia.Controls.Win.WebView2.Interop;
 using Avalonia.Logging;
-// ReSharper disable InconsistentNaming
+using Avalonia.Platform;
 
+// ReSharper disable InconsistentNaming
 namespace Avalonia.Controls.Win.WebView2;
 
 [SupportedOSPlatform("windows")]
@@ -15,23 +17,51 @@ internal static partial class CoreWebView2Environment
 {
     private enum WebView2RunTimeType { kInstalled = 0x0, kRedistributable = 0x1 }
 
-    public static bool IsAvailable => s_createEnv.Value != IntPtr.Zero;
+    private static readonly Dictionary<EnvironmentOptions, TaskCompletionSource<ICoreWebView2Environment>> s_environments = new();
 
-    public static async Task<ICoreWebView2Environment> CreateAsync()
+    public static Task<ICoreWebView2Environment> CreateAsync(WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
     {
-        var createEnvPtr = s_createEnv.Value;
-        if (createEnvPtr == IntPtr.Zero)
-            throw new InvalidOperationException("WebView2 runtime not found or CreateWebViewEnvironmentWithOptionsInternal not exported.");
+        if (environmentArgs.ExplicitEnvironment is var customEnv && customEnv != IntPtr.Zero)
+        {
+            unsafe
+            {
+                var managed = ComInterfaceMarshaller<ICoreWebView2Environment>.ConvertToManaged(customEnv.ToPointer());
+                return managed is not null ? Task.FromResult(managed) : Task.FromException<ICoreWebView2Environment>(
+                    new InvalidOperationException("Unable to resolve managed COM interface from the ExplicitEnvironment handle"));
+            }
+        }
 
-        var envCallback = new WebView2EnvHandler();
-        var options = new Options();
-        var res = CreateEnv(createEnvPtr, WebView2RunTimeType.kInstalled, null, options, envCallback);
-        if (res != 0)
-            throw new Win32Exception(res);
-        return await envCallback.Result.Task;
+        var options = new EnvironmentOptions(environmentArgs);
+        return GetOrCreateEnvForOptions(options);
     }
 
-    private static unsafe int CreateEnv(IntPtr createEnvProc, WebView2RunTimeType runTimeType, string? userDataFolder, Options options, WebView2EnvHandler envCallback)
+    private static Task<ICoreWebView2Environment> GetOrCreateEnvForOptions(EnvironmentOptions options)
+    {
+        if (!s_environments.TryGetValue(options, out var tcs))
+        {
+            var runtimeFunc = TryFindWebView2Runtime(options.BrowserExecutableFolder);
+            if (runtimeFunc == IntPtr.Zero)
+            {
+                tcs = new TaskCompletionSource<ICoreWebView2Environment>();
+                tcs.SetException(new InvalidOperationException("WebView2 runtime not found or CreateWebViewEnvironmentWithOptionsInternal not exported."));
+            }
+            else
+            {
+                var envCallback = new WebView2EnvHandler();
+                var res = CreateEnv(runtimeFunc, WebView2RunTimeType.kInstalled, options.UserDataFolder, options, envCallback);
+                if (res != 0)
+                {
+                    envCallback.Result.TrySetException(new Win32Exception(res));
+                }
+                tcs = envCallback.Result;
+            }
+            s_environments[options] = tcs;
+        }
+
+        return tcs.Task;
+    }
+
+    private static unsafe int CreateEnv(IntPtr createEnvProc, WebView2RunTimeType runTimeType, string? userDataFolder, EnvironmentOptions options, WebView2EnvHandler envCallback)
     {
         var callbackPtr = ComInterfaceMarshaller<ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler>.ConvertToUnmanaged(envCallback);
         var optionsPtr = ComInterfaceMarshaller<ICoreWebView2EnvironmentOptions>.ConvertToUnmanaged(options);
@@ -50,9 +80,9 @@ internal static partial class CoreWebView2Environment
         }
     }
 
-    private static readonly Lazy<IntPtr> s_createEnv = new(() =>
+    public static IntPtr TryFindWebView2Runtime(string? browserExecutableFolder)
     {
-        var webViewRuntime = ManagedWebView2Loader.FindWebView2Runtime();
+        var webViewRuntime = ManagedWebView2Loader.FindWebView2Runtime(browserExecutableFolder);
         if (webViewRuntime is null)
         {
             Logger.TryGet(LogEventLevel.Warning, "WebView")
@@ -69,28 +99,6 @@ internal static partial class CoreWebView2Environment
         }
 
         return createEnvPtr;
-    });
-
-#if COM_SOURCE_GEN
-    [GeneratedComClass]
-#endif
-    private partial class Options : CallbackBase, ICoreWebView2EnvironmentOptions
-    {
-        public string? GetAdditionalBrowserArguments() => null;
-
-        public void SetAdditionalBrowserArguments(string additionalBrowserArguments) {}
-
-        public string? GetLanguage() => null;
-
-        public void SetLanguage(string language) {}
-
-        public string GetTargetCompatibleBrowserVersion() => "135.0.3179.45";
-
-        public void SetTargetCompatibleBrowserVersion(string targetCompatibleBrowserVersion) { }
-
-        public int GetAllowSingleSignOnUsingOSPrimaryAccount() => 0;
-
-        public void SetAllowSingleSignOnUsingOSPrimaryAccount(int allowSingleSignOnUsingOSPrimaryAccount) {}
     }
 
 #if COM_SOURCE_GEN

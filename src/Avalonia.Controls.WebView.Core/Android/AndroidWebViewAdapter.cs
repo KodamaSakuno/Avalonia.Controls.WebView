@@ -25,7 +25,7 @@ internal class AndroidWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapter
     private readonly WebView _webView;
     private readonly JavaScriptInterface _jsInterface;
 
-    public AndroidWebViewAdapter(IPlatformHandle parent)
+    public AndroidWebViewAdapter(IPlatformHandle parent, AndroidWebViewEnvironmentRequestedEventArgs environmentArgs)
     {
         var parentContext = (parent as AndroidViewControlHandle)?.View.Context
                             ?? global::Android.App.Application.Context;
@@ -39,8 +39,7 @@ internal class AndroidWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapter
         _webView.SetWebViewClient(new AvaloniaWebViewClient(this));
         _webView.SetWebChromeClient(new WebChromeClient());
 
-        var enableDevTools = AvaloniaLocator.Current.GetService<WebViewOptions>()?.EnableDevTools == true;
-        if (enableDevTools)
+        if (environmentArgs.EnableDevTools)
         {
             WebView.SetWebContentsDebuggingEnabled(true);
         }
@@ -213,7 +212,8 @@ internal class AndroidWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapter
                         Method = new HttpMethod(request.Method!),
                         Uri = url,
                         Headers = new NativeHeadersCollection(new DictionaryNativeHttpRequestHeaders(
-                            request.RequestHeaders?.AsReadOnly() ?? new ReadOnlyDictionary<string, string>([]))),
+                            request.RequestHeaders?.AsReadOnly() ?? new ReadOnlyDictionary<string, string>(
+                                new Dictionary<string, string>()))),
                     }
                 };
 

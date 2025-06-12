@@ -11,6 +11,7 @@
             <Grid x:Name="GridContainer" RowDefinitions="3*, *">
                 <NativeWebView x:Name="WebView"
                                Source="https://google.com/"
+                               EnvironmentRequested="NativeWebView_OnEnvironmentRequested"
                                NavigationCompleted="NativeWebView_OnNavigationCompleted"
                                NavigationStarted="NativeWebView_OnNavigationStarted"
                                WebMessageReceived="NativeWebView_OnWebMessageReceived"

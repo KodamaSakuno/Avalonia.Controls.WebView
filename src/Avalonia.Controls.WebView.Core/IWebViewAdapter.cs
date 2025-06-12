@@ -14,6 +14,11 @@ using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
 
 namespace Avalonia.Controls;
 
+public abstract class WebViewEnvironmentRequestedEventArgs : EventArgs
+{
+    public bool EnableDevTools { get; set; }
+}
+
 public sealed class WebMessageReceivedEventArgs : EventArgs
 {
     public string? Body { get; init; }
@@ -107,10 +112,7 @@ public sealed class WebViewAdapterEventArgs(IPlatformHandle? platformHandle) : E
 
 internal interface INativeWebViewDialog : IDisposable
 {
-    /// <summary>
-    /// Gets WebView instance hosted inside the dialog.
-    /// </summary>
-    IWebView WebView { get; }
+    IWebViewAdapter? TryGetAdapter();
 
     /// <summary>
     /// Gets or sets WebView dialog title.
@@ -126,6 +128,12 @@ internal interface INativeWebViewDialog : IDisposable
     /// Fired before WebView dialog is closed.
     /// </summary>
     event EventHandler Closing;
+
+    /// <see cref="IWebViewHolder.AdapterInitialized"/>
+    event EventHandler<WebViewAdapterEventArgs>? AdapterInitialized;
+
+    /// <see cref="IWebViewHolder.AdapterDestroyed"/>
+    event EventHandler<WebViewAdapterEventArgs>? AdapterDestroyed;
 
     /// <summary>
     /// Opens the WebView dialog.
@@ -152,9 +160,38 @@ internal interface INativeWebViewDialog : IDisposable
     /// </summary>
     bool Move(int x, int y);
 
+    IPlatformHandle? TryGetPlatformHandle();
+}
+
+internal interface IWebViewHolder
+{
     /// <summary>
-    /// Gets platform handle of the dialog itself.
+    ///     AdapterInitialized dispatches after underlying webview adapter was initialized.
     /// </summary>
+    public event EventHandler<WebViewAdapterEventArgs>? AdapterInitialized;
+
+    /// <summary>
+    ///     AdapterDestroyed dispatches after underlying webview adapter was destroyed.
+    /// </summary>
+    public event EventHandler<WebViewAdapterEventArgs>? AdapterDestroyed;
+
+    public event EventHandler<WebViewEnvironmentRequestedEventArgs>? EnvironmentRequested;
+
+    /// <summary>
+    /// Returns instance <see cref="Avalonia.Controls.NativeWebViewCommandManager"/> that allows executing common keyboard commands. Or null, if not supported by the platform.
+    /// </summary>
+    NativeWebViewCommandManager? TryGetCommandManager();
+
+    /// <summary>
+    /// Returns instance <see cref="Avalonia.Controls.NativeWebViewCookieManager"/> that allows reading and settings cookies. Or null, if not supported by the platform.
+    /// </summary>
+    NativeWebViewCookieManager? TryGetCookieManager();
+
+    /// <inheritdoc cref="Avalonia.Controls.WebViewAdapterEventArgs.TryGetPlatformHandle"/>
+    /// <remarks>
+    /// <para>Return handle can be used to access additional native APIs by using it with PInvokes.</para> 
+    /// <para>Should be used together with <see cref="AdapterInitialized"/> and <see cref="AdapterDestroyed"/>.</para>
+    /// </remarks>
     IPlatformHandle? TryGetPlatformHandle();
 }
 

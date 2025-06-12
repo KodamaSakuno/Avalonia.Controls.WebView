@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
+using Avalonia.Platform;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using static Avalonia.Controls.Gtk.GtkInterop;
@@ -10,7 +11,7 @@ using static Avalonia.Controls.Gtk.AvaloniaGtk;
 
 namespace Avalonia.Controls.Gtk;
 
-internal unsafe class GtkOffscreenAvaloniaWebViewAdapter(Control parent) : GtkOffscreenWebViewAdapter
+internal unsafe class GtkOffscreenAvaloniaWebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs environmentArgs, Control parent) : GtkOffscreenWebViewAdapter(environmentArgs)
 {
     private static readonly IntPtr s_showOptionMenuCallback =
         new((delegate* unmanaged[Cdecl]<IntPtr, IntPtr, GdkEvent*, GdkRectangle*, IntPtr, bool>)&ShowOptionMenuCallback);

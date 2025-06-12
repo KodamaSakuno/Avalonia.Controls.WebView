@@ -17,10 +17,5 @@ internal class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
-            .With(new WebViewOptions
-            {
-                EnableDevTools = true,
-                ExperimentalGtkOffscreen = false
-            })
             .LogToTrace();
 }

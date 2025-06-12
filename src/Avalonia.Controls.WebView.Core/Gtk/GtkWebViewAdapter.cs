@@ -54,8 +54,9 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     private GtkSignal? _resourceLoadStarted;
     private Uri _source = WebViewHelper.EmptyPage;
 
-    public GtkWebViewAdapter()
+    public GtkWebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs environmentArgs)
     {
+        EnvironmentArgs = environmentArgs;
         RunOnGlibThread(() =>
         {
             InitializeSafe();
@@ -64,6 +65,8 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
         // ReSharper disable once VirtualMemberCallInConstructor
         OnInitialized();
     }
+
+    internal GtkWebViewEnvironmentRequestedEventArgs EnvironmentArgs { get; }
 
     public bool IsInitialized { get; private set; }
     public IntPtr WebViewHandle { get; private set; }
@@ -190,8 +193,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
         WebViewHandle = webkit_web_view_new_with_user_content_manager(contentManager);
         g_object_ref_sink(WebViewHandle);
 
-        var enableDevTools = AvaloniaLocator.Current.GetService<WebViewOptions>()?.EnableDevTools == true;
-        if (enableDevTools)
+        if (EnvironmentArgs.EnableDevTools)
         {
             var settings = webkit_web_view_get_settings(WebViewHandle);
             webkit_settings_set_enable_developer_extras(settings, true);

@@ -107,8 +107,10 @@ internal partial interface ICoreWebView2
     void add_WebResourceRequested([MarshalAs(UnmanagedType.Interface)] ICoreWebView2WebResourceRequestedEventHandler eventHandler, out EventRegistrationToken token);
     void remove_WebResourceRequested(EventRegistrationToken token);
 
-    void AddWebResourceRequestedFilter([MarshalAs(UnmanagedType.LPWStr)] string uri, int ResourceContext);
-    void RemoveWebResourceRequestedFilter([MarshalAs(UnmanagedType.LPWStr)] string uri, int ResourceContext);
+    [PreserveSig]
+    int AddWebResourceRequestedFilter([MarshalAs(UnmanagedType.LPWStr)] string uri, int resourceContext);
+    [PreserveSig]
+    int RemoveWebResourceRequestedFilter([MarshalAs(UnmanagedType.LPWStr)] string uri, int resourceContext);
 
     void add_WindowCloseRequested([MarshalAs(UnmanagedType.Interface)] IntPtr eventHandler, out EventRegistrationToken token);
     void remove_WindowCloseRequested(EventRegistrationToken token);
