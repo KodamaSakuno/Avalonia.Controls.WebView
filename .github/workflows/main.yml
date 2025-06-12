@@ -9,14 +9,13 @@ on:
 jobs:
 
   build:
-    runs-on: [self-hosted, Windows]
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
 
-    - name: Clean packages
-      shell: cmd
-      run: if exist "${{github.workspace}}/artifacts" rmdir /s /q "${{github.workspace}}/artifacts"
- 
     - name: CreateNugetPackages
       run: dotnet run --project ${{github.workspace}}/build/_build.csproj --target CreateNugetPackages --configuration Release --output ${{github.workspace}}/artifacts/packages/
 
