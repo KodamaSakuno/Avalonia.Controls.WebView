@@ -69,6 +69,14 @@ internal static unsafe partial class GtkInterop
     [DllImport(LibWebKit)]
     internal static extern void webkit_settings_set_enable_developer_extras(IntPtr webView, bool enabled);
 
+#if NET7_0_OR_GREATER
+    [LibraryImport(LibWebKit, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial void webkit_settings_set_user_agent_with_application_details(IntPtr webView, string? appName, string? version);
+#else
+    [DllImport(LibWebKit)]
+    internal static extern void webkit_settings_set_user_agent_with_application_details(IntPtr webView, string? appName, string? version);
+#endif
+
     [DllImport(LibWebKit)]
     internal static extern IntPtr webkit_web_view_get_settings(IntPtr webView);
 

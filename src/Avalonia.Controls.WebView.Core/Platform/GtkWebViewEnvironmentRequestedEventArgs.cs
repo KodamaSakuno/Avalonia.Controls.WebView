@@ -7,6 +7,11 @@ namespace Avalonia.Platform;
 public sealed class GtkWebViewEnvironmentRequestedEventArgs : WebViewEnvironmentRequestedEventArgs
 {
     /// <summary>
+    /// Set the UserAgent property by appending the application details to the default user agent.
+    /// </summary>
+    public string? ApplicationNameForUserAgent { get; set; }
+
+    /// <summary>
     /// Experimental support for GTK WebView that can be hosted in the same Avalonia window, without overlapping other controls.
     /// </summary>
     public bool ExperimentalOffscreen { get; set; }

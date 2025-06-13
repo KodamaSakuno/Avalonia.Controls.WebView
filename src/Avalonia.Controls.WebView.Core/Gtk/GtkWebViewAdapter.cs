@@ -243,10 +243,14 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
 
         g_object_ref_sink(WebViewHandle);
 
+        var settings = webkit_web_view_get_settings(WebViewHandle);
         if (EnvironmentArgs.EnableDevTools)
         {
-            var settings = webkit_web_view_get_settings(WebViewHandle);
             webkit_settings_set_enable_developer_extras(settings, true);
+        }
+        if (EnvironmentArgs.ApplicationNameForUserAgent is { Length: > 0 } appUserAgent)
+        {
+            webkit_settings_set_user_agent_with_application_details(settings, appUserAgent, null);
         }
 
         _loadChangedSignal = new GtkSignal(WebViewHandle, "load-changed", s_loadChangedCallback, this);
