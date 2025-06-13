@@ -93,6 +93,7 @@ public partial class MainView : UserControl
     {
         var requestFormatted = string.Join(Environment.NewLine, e.Request.ToString()
             .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries)
+            .Take(4)
             .Select(static e => e.Length > 100 ? e[..100] : e));
         LogList.Text += "\r\nNativeWebView_OnWebResourceRequested " + requestFormatted;
         var wasSet = e.Request.Headers.TrySet("X-MyHeader", "Value");
@@ -185,20 +186,20 @@ public partial class MainView : UserControl
     {
         LogList.Text += "\r\nNativeWebView_OnAdapterInitialized " + e.TryGetPlatformHandle()?.GetType().Name;
 
-        if (e.TryGetPlatformHandle() is IWindowsWebView2PlatformHandle webView2)
-        {
-            DispatcherTimer.RunOnce(() =>
-            {
-                LogList.Text += "\r\nRunning ICoreWebView2.Refresh using native interop";
-
-                // Some testing code, just to make sure user can do the same in a better way (CsWin32 or so).
-                const int refreshMethodOffset = 31;
-                var vtable = Marshal.ReadIntPtr(webView2.CoreWebView2);
-                var methodPtr = Marshal.ReadIntPtr(vtable, refreshMethodOffset * IntPtr.Size);
-                var methodDelegate = (delegate* unmanaged[Stdcall]<IntPtr, int>)methodPtr;
-                methodDelegate(webView2.CoreWebView2);
-            }, TimeSpan.FromSeconds(4));
-        }
+        // if (e.TryGetPlatformHandle() is IWindowsWebView2PlatformHandle webView2)
+        // {
+        //     DispatcherTimer.RunOnce(() =>
+        //     {
+        //         LogList.Text += "\r\nRunning ICoreWebView2.Refresh using native interop";
+        //
+        //         // Some testing code, just to make sure user can do the same in a better way (CsWin32 or so).
+        //         const int refreshMethodOffset = 31;
+        //         var vtable = Marshal.ReadIntPtr(webView2.CoreWebView2);
+        //         var methodPtr = Marshal.ReadIntPtr(vtable, refreshMethodOffset * IntPtr.Size);
+        //         var methodDelegate = (delegate* unmanaged[Stdcall]<IntPtr, int>)methodPtr;
+        //         methodDelegate(webView2.CoreWebView2);
+        //     }, TimeSpan.FromSeconds(4));
+        // }
     }
 
     private void NativeWebView_OnAdapterDestroyed(object? sender, WebViewAdapterEventArgs e)
@@ -209,8 +210,10 @@ public partial class MainView : UserControl
     private void NativeWebView_OnEnvironmentRequested(object? sender, WebViewEnvironmentRequestedEventArgs e)
     {
         LogList.Text += "\r\nNativeWebView_OnEnvironmentRequested";
+        e.EnableDevTools = true;
         if (e is WindowsWebView2EnvironmentRequestedEventArgs webView2)
         {
+            // webView2.UserAgent = "AvaloniaWebView";
             webView2.ProfileName = "AvaloniaUser";
             webView2.UserDataFolder = Path.Combine(AppContext.BaseDirectory, "webview");
         }
