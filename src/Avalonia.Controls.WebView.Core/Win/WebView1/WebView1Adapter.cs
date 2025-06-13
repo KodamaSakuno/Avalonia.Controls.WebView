@@ -8,6 +8,7 @@ using Windows.Win32.Foundation;
 using Avalonia.Controls.Platform;
 using Avalonia.Controls.Win.WebView1.Interop;
 using Avalonia.Controls.Win.WebView2;
+using Avalonia.Logging;
 using Avalonia.Platform;
 using Avalonia.Threading;
 
@@ -16,34 +17,17 @@ namespace Avalonia.Controls.Win.WebView1;
 [SupportedOSPlatform("windows6.1")]
 internal sealed class WebView1Adapter : IWebViewAdapter, IWindowsWebView1PlatformHandle
 {
-    private static IWebViewControlProcess? s_lazyProcess;
-    private static int s_webViewsCount;
-
+    private readonly WebView1Process _process;
     private IWebViewControl? _webViewControl;
     private IWebViewControlSite? _webViewControlSite;
     private Action? _subscriptions;
 
-    public static bool IsAvailable
+    public WebView1Adapter(IPlatformHandle handle, WebView1Process process)
     {
-        get
-        {
-            try
-            {
-                return (s_lazyProcess ??= CreateProcess()) is not null;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-    }
-
-    public WebView1Adapter(IPlatformHandle handle)
-    {
+        process.AddOne();
+        _process = process;
         Handle = handle.Handle;
         Initialize();
-
-        Interlocked.Increment(ref s_webViewsCount);
     }
 
     public IntPtr Handle { get; }
@@ -51,50 +35,50 @@ internal sealed class WebView1Adapter : IWebViewAdapter, IWindowsWebView1Platfor
 
     private async void Initialize()
     {
-        var process = s_lazyProcess ??= CreateProcess();
-
-        if (!PInvoke.GetWindowRect(new HWND(Handle), out var rect))
-            rect = RECT.FromXYWH(0, 0, 100, 100);
-
-        var operation = process.CreateWebViewControl((long)Handle,
-            new winrtRect { Height = rect.Width, Width = rect.Height });
-        var handler = new WebViewControlHandler();
-        operation.put_Completed(handler);
-
-        var control = await handler.Task;
-
-        if (control.get_Settings() is { } settings)
+        try
         {
-            settings.put_IsJavaScriptEnabled(true);
-            settings.put_IsScriptNotifyAllowed(true);
+            if (!PInvoke.GetWindowRect(new HWND(Handle), out var rect))
+                rect = RECT.FromXYWH(0, 0, 100, 100);
+
+            var control = await _process.CreateWebViewControl(Handle, rect.Width, rect.Height);
+            if (control.get_Settings() is { } settings)
+            {
+                settings.put_IsJavaScriptEnabled(true);
+                settings.put_IsScriptNotifyAllowed(true);
+            }
+
+            // Doesn't work for some reason.
+            // Instead injecting script in the NavigationCompleted
+            // if (control is IWebViewControl2 control2)
+            // {
+            //      var initScript =
+            //         new HStringInterop("""
+            //                            window.invokeCSharpAction = function(data) {
+            //                                var message = typeof data === 'object' ? JSON.stringify(data) : data;
+            //                                window.external.notify(message);
+            //                            };
+            //                            """);
+            //     control2.AddInitializeScript(initScript.Handle);
+            // }
+
+            _webViewControl = control;
+            // ReSharper disable once SuspiciousTypeConversion.Global
+            // IWebViewControlSite can be queried from the IWebViewControl
+            _webViewControlSite = (IWebViewControlSite)control;
+
+            _webViewControlSite.put_IsVisible(true);
+            SizeChanged(default);
+
+            _subscriptions = AddHandlers(_webViewControl);
+
+            IsInitialized = true;
+            Initialized?.Invoke(this, EventArgs.Empty);
         }
-
-        // Doesn't work for some reason.
-        // Instead injecting script in the NavigationCompleted
-        // if (control is IWebViewControl2 control2)
-        // {
-        //      var initScript =
-        //         new HStringInterop("""
-        //                            window.invokeCSharpAction = function(data) {
-        //                                var message = typeof data === 'object' ? JSON.stringify(data) : data;
-        //                                window.external.notify(message);
-        //                            };
-        //                            """);
-        //     control2.AddInitializeScript(initScript.Handle);
-        // }
-
-        _webViewControl = control;
-        // ReSharper disable once SuspiciousTypeConversion.Global
-        // IWebViewControlSite can be queried from the IWebViewControl
-        _webViewControlSite = (IWebViewControlSite)control;
-        
-        _webViewControlSite.put_IsVisible(true);
-        SizeChanged(default);
-
-        _subscriptions = AddHandlers(_webViewControl);
-
-        IsInitialized = true;
-        Initialized?.Invoke(this, EventArgs.Empty);
+        catch (Exception ex)
+        {
+            Logger.TryGet(LogEventLevel.Error, "WebView")?
+                .Log(null, "WebView1 initialization failed with unhandled exception", ex);
+        }
     }
 
     public bool IsInitialized { get; private set; }
@@ -211,16 +195,6 @@ internal sealed class WebView1Adapter : IWebViewAdapter, IWindowsWebView1Platfor
     internal EventHandler<WebResourceRequestedEventArgs>? GetWebResourceRequested() => WebResourceRequested;
     internal EventHandler<WebViewNewWindowRequestedEventArgs>? GetNewWindowRequested() => NewWindowRequested;
 
-    private static IWebViewControlProcess CreateProcess()
-    {
-        var options = NativeWinRTMethods.CreateInstance<IWebViewControlProcessOptions>("Windows.Web.UI.Interop.WebViewControlProcessOptions")
-            ?? throw new InvalidOperationException("Unable to create WebViewControlProcessOptions.");
-        options.put_PrivateNetworkClientServerCapability(WebViewControlProcessCapabilityState.Enabled);
-        var factory = NativeWinRTMethods.CreateActivationFactory<IWebViewControlProcessFactory>("Windows.Web.UI.Interop.WebViewControlProcess")
-            ?? throw new InvalidOperationException("Unable to create WebViewControlProcess.");
-        return factory.CreateWithOptions(options);
-    }
-
     private Action AddHandlers(IWebViewControl webView)
     {
         var callbacks = new WebViewCallbacks(new WeakReference<WebView1Adapter>(this));
@@ -240,27 +214,29 @@ internal sealed class WebView1Adapter : IWebViewAdapter, IWindowsWebView1Platfor
         };
     }
 
-    public void Dispose()
-    {
-        var webViewsCount = Interlocked.Decrement(ref s_webViewsCount);
-
-        _subscriptions?.Invoke();
-
-        if (_webViewControlSite is not null)
-        {
-            _webViewControlSite.Close();
-            _webViewControlSite = null;
-        }
-
-        _webViewControl = null;
-
-        if (s_lazyProcess is { } process && webViewsCount == 0)
-        {
-            s_lazyProcess = null;
-        }
-    }
-
     unsafe IntPtr IWindowsWebView1PlatformHandle.WebViewControl => _webViewControl is not null ?
         new(ComInterfaceMarshaller<IWebViewControl>.ConvertToUnmanaged(_webViewControl)) :
         IntPtr.Zero;
+
+    private void ReleaseUnmanagedResources()
+    {
+        // Since process was technically created on UI thread, it's expected to release it on UI thread.
+        // Not to mention, this method call might be done on finalizer thread.
+        Dispatcher.UIThread.InvokeAsync(() => _process.ReleaseOne());
+    }
+
+    public void Dispose()
+    {
+        _webViewControl = null;
+        Interlocked.Exchange(ref _subscriptions, null)?.Invoke();
+        Interlocked.Exchange(ref _webViewControlSite, null)?.Close();
+
+        ReleaseUnmanagedResources();
+        GC.SuppressFinalize(this);
+    }
+
+    ~WebView1Adapter()
+    {
+        ReleaseUnmanagedResources();
+    }
 }

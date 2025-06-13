@@ -37,7 +37,8 @@ internal partial interface IWebViewControlProcess : IInspectable
 
     void GetWebViewControls(out IntPtr result);
 
-    void Terminate();
+    [PreserveSig]
+    int Terminate();
 
     void add_ProcessExited(IntPtr handler, out EventRegistrationToken token);
 

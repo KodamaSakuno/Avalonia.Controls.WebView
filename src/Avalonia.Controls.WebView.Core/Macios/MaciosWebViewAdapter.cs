@@ -27,7 +27,7 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
     private readonly WKNavigationDelegate _navDelegate;
     private readonly WKScriptMessageHandler _scriptHandler;
 
-    public MaciosWebViewAdapter(AppleWKWebView2EnvironmentRequestedEventArgs options)
+    public MaciosWebViewAdapter(AppleWKWebViewEnvironmentRequestedEventArgs options)
     {
         _scriptHandler = new WKScriptMessageHandler();
         _scriptHandler.DidReceiveScriptMessage += OnScriptHandlerOnDidReceiveScriptMessage;
@@ -35,8 +35,34 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
         _config = new WKWebViewConfiguration { JavaScriptEnabled = true };
         _config.AddScriptMessageHandler(_scriptHandler, _postAvWebViewMessageName);
 
-        _config.Preferences.MediaDevicesEnabled = true;
+        if (options.ApplicationNameForUserAgent is not null)
+        {
+            using var appName = NSString.Create(options.ApplicationNameForUserAgent);
+            _config.ApplicationNameForUserAgent = appName;
+        }
 
+        if (OperatingSystemEx.IsIOSVersionAtLeast(14, 0)
+            || OperatingSystemEx.IsMacOSVersionAtLeast(11, 0))
+        {
+            _config.LimitsNavigationsToAppBoundDomains = options.LimitsNavigationsToAppBoundDomains;
+        }
+
+        if (OperatingSystemEx.IsIOSVersionAtLeast(14, 5)
+            || OperatingSystemEx.IsMacOSVersionAtLeast(11, 3))
+        {
+            _config.UpgradeKnownHostsToHTTPS = options.UpgradeKnownHostsToHTTPS;
+        }
+
+        _config.WebsiteDataStore = (options.NonPersistentDataStore, options.DataStoreIdentifier) switch
+        {
+            (true, _) => WKWebsiteDataStore.NonPersistent,
+            (_, { Length: > 0 } id)
+                when OperatingSystemEx.IsIOSVersionAtLeast(17, 0) || OperatingSystemEx.IsMacOSVersionAtLeast(14, 0)
+                => WKWebsiteDataStore.ForIdentifier(id),
+            _ => WKWebsiteDataStore.Default,
+        };
+
+        _config.Preferences.MediaDevicesEnabled = true; // undocumented, but necessary for getUserMedia to work
         _config.Preferences.DeveloperExtrasEnabled = options.EnableDevTools;
 
         _navDelegate = new WKNavigationDelegate();

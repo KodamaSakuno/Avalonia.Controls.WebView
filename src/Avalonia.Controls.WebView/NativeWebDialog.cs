@@ -36,6 +36,7 @@ namespace Avalonia.Xpf.Controls
         private PixelSize? _initialSize;
         private PixelPoint? _initialPosition;
         private bool _disposed;
+        private bool _dialogInitialized;
 
         public NativeWebDialog()
         {
@@ -394,7 +395,7 @@ namespace Avalonia.Xpf.Controls
 
             _implTcs.SetResult(dialogImpl);
 
-            if (dialogImpl.TryGetAdapter() is { } adapter)
+            if (dialogImpl.TryGetAdapter() is { } adapter && !_dialogInitialized)
                 DialogImplOnAdapterInitialized(dialogImpl, new Core.WebViewAdapterEventArgs(adapter));
         }
 
@@ -410,11 +411,18 @@ namespace Avalonia.Xpf.Controls
             adapter.WebMessageReceived -= WebViewAdapterOnWebMessageReceived;
             adapter.WebResourceRequested -= WebViewAdapterOnWebResourceRequested;
             adapter.NewWindowRequested -= WebViewAdapterOnNewWindowRequested;
+            _dialogInitialized = false;
             AdapterDestroyed?.Invoke(this, e);
         }
 
         private void DialogImplOnAdapterInitialized(object? sender, Core.WebViewAdapterEventArgs e)
         {
+            if (_dialogInitialized)
+            {
+                throw new InvalidOperationException("Dialog was already initialized");
+            }
+
+            _dialogInitialized = true;
             var dialog = (Core.INativeWebViewDialog)sender!;
             dialog.AdapterInitialized -= DialogImplOnAdapterInitialized;
             dialog.AdapterDestroyed += DialogImplOnAdapterDestroyed;
