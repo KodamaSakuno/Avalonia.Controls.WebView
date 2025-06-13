@@ -95,7 +95,7 @@ namespace Avalonia.Xpf.Controls
                     webView2.IsInPrivateModeEnabled = true;
                 else if (args is AppleWKWebViewEnvironmentRequestedEventArgs wkWebView
                          && options.NonPersistent)
-                    wkWebView.DataStore = AppleWKWebViewEnvironmentRequestedEventArgs.WebsiteDataStore.NonPersistent;
+                    wkWebView.NonPersistentDataStore = true;
                 else if (args is GtkWebViewEnvironmentRequestedEventArgs gtkWebView
                          && options.NonPersistent)
                     gtkWebView.EphemeralDataManager = true;

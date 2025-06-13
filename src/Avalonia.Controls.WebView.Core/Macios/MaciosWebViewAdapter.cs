@@ -53,15 +53,12 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
             _config.UpgradeKnownHostsToHTTPS = options.UpgradeKnownHostsToHTTPS;
         }
 
-        _config.WebsiteDataStore = options.DataStore?.Identifier switch
+        _config.WebsiteDataStore = (options.NonPersistentDataStore, options.DataStoreIdentifier) switch
         {
-            nameof(AppleWKWebViewEnvironmentRequestedEventArgs.WebsiteDataStore.Default)
-                => WKWebsiteDataStore.Default,
-            nameof(AppleWKWebViewEnvironmentRequestedEventArgs.WebsiteDataStore.NonPersistent)
-                => WKWebsiteDataStore.NonPersistent,
-            { Length: > 0 } when OperatingSystemEx.IsIOSVersionAtLeast(17, 0)
-                                 || OperatingSystemEx.IsMacOSVersionAtLeast(14, 0)
-                => WKWebsiteDataStore.ForIdentifier(options.DataStore.Identifier),
+            (true, _) => WKWebsiteDataStore.NonPersistent,
+            (_, { Length: > 0 } id)
+                when OperatingSystemEx.IsIOSVersionAtLeast(17, 0) || OperatingSystemEx.IsMacOSVersionAtLeast(14, 0)
+                => WKWebsiteDataStore.ForIdentifier(id),
             _ => WKWebsiteDataStore.Default,
         };
 

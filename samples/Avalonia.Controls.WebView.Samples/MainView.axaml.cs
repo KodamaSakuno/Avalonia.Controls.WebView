@@ -216,7 +216,7 @@ public partial class MainView : UserControl
         }
         else if (e is AppleWKWebViewEnvironmentRequestedEventArgs wkWebView)
         {
-            wkWebView.DataStore = AppleWKWebViewEnvironmentRequestedEventArgs.WebsiteDataStore.NonPersistent;
+            wkWebView.NonPersistentDataStore = true;
             wkWebView.ApplicationNameForUserAgent = "Avalonia WebView Sample";
             wkWebView.LimitsNavigationsToAppBoundDomains = true;
         }
