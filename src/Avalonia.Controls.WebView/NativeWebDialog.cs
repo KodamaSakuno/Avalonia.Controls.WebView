@@ -1,5 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Avalonia.Controls.Gtk;
 using Avalonia.Platform;
@@ -268,6 +267,26 @@ namespace Avalonia.Xpf.Controls
             }
         }
 
+#if WPF
+        public System.Drawing.Color? BackgroundColor
+#elif AVALONIA
+        public Avalonia.Media.Color? BackgroundColor
+#endif
+        {
+            get => field;
+            set
+            {
+                if (field != value)
+                {
+                    field = value;
+                    if (TryGetImpl() is { } impl)
+                    {
+                        impl.DefaultBackground = 
+                    }
+                }
+            }
+        }
+
         /// <inheritdoc cref="Core.INativeWebViewDialog.Closing"/>
         public event EventHandler? Closing;
         /// <inheritdoc cref="Core.INativeWebViewDialog.Show()"/>
@@ -399,6 +418,11 @@ namespace Avalonia.Xpf.Controls
                 dialogImpl.Resize(size.Width, size.Height);
 
             _implTcs.SetResult(dialogImpl);
+
+            if (BackgroundColor is { } color)
+            {
+                dialogImpl.DefaultBackground = new Avalonia.Media.Color(color.A, color.R, color.G, color.B);
+            }
 
             if (dialogImpl.TryGetAdapter() is { } adapter && !_dialogInitialized)
                 DialogImplOnAdapterCreated(dialogImpl, new Core.WebViewAdapterEventArgs(adapter));
