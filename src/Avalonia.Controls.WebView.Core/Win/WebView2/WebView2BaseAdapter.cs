@@ -90,7 +90,8 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
             {
                 controller2.SetDefaultBackgroundColor(new COREWEBVIEW2_COLOR
                 {
-                    A = value.A,
+                    // WebView2 doesn't support any decimal alpha channel 
+                    A = value.A > 130 ? (byte)255 : (byte)0,
                     R = value.R,
                     G = value.G,
                     B = value.B,
@@ -192,10 +193,12 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
     internal EventHandler<WebResourceRequestedEventArgs>? GetWebResourceRequested() => _webResourceRequested;
     internal EventHandler<WebViewNewWindowRequestedEventArgs>? GetNewWindowRequested() => NewWindowRequested;
 
+    private async void Initialize(IPlatformHandle parentHost, WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
     {
         try
         {
             var env = await CoreWebView2Environment.CreateAsync(environmentArgs);
+            var controller = await CreateWebView2Controller(env, parentHost.Handle, environmentArgs);
             var webView = controller.GetCoreWebView2();
 
             var addScriptCompletion = new AddScriptToExecuteOnDocumentCreatedCompletedHandler();
@@ -242,6 +245,7 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
     }
 
     protected abstract Task<ICoreWebView2Controller> CreateWebView2Controller(ICoreWebView2Environment env,
+        IntPtr handle, WindowsWebView2EnvironmentRequestedEventArgs environmentArgs);
 
     private Action AddHandlers(ICoreWebView2 webView)
     {

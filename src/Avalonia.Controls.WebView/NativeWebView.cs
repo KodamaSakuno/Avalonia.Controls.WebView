@@ -65,10 +65,8 @@ namespace Avalonia.Xpf.Controls
         {
 #if WPF
             FocusableProperty.OverrideMetadata(typeof(NativeWebView), new UIPropertyMetadata(true));
-            BackgroundProperty.OverrideMetadata(typeof(NativeWebView), new UIPropertyMetadata(Brushes.White));
 #elif AVALONIA
             FocusableProperty.OverrideDefaultValue<NativeWebView>(true);
-            BackgroundProperty.OverrideDefaultValue<NativeWebView>(Brushes.White);
 #endif
         }
 
