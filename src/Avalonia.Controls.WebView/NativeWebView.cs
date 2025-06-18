@@ -353,6 +353,11 @@ namespace Avalonia.Xpf.Controls
         }
 
         private void OnInitialized(object? sender, EventArgs e)
+#if WPF
+            // Due to differences in initialization order between Avalonia and WPF, we delay adapter creation on WPF,
+            // because it's happening way too early there, even before subscribers were ready  
+            => Dispatcher.CurrentDispatcher.InvokeAsync(() =>
+#endif
         {
             var adapterFactory = Core.WebViewAdapter.CreateFactory(args => EnvironmentRequested?.Invoke(this, args));
             INativeWebViewControlImpl controlHostImpl = adapterFactory switch
@@ -376,6 +381,9 @@ namespace Avalonia.Xpf.Controls
 
             _controlHostImplTcs.TrySetResult(controlHostImpl);
         }
+#if WPF
+        );
+#endif
 
         private void WithFocusOnGotFocus(object? sender, EventArgs e)
         {
