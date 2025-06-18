@@ -48,9 +48,6 @@ namespace Avalonia.Xpf.Controls
         public static readonly DependencyProperty SourceProperty = DependencyProperty.Register(
             nameof(Source), typeof(Uri), typeof(NativeWebView),
             new PropertyMetadata(new Uri("about:blank"), SourcePropertyChangedCallback));
-        public new static readonly DependencyProperty BackgroundProperty =
-            Control.BackgroundProperty.AddOwner(typeof(NativeWebView),
-                new PropertyMetadata(null, DefaultBackgroundPropertyChangedCallback));
 #elif AVALONIA
         public static readonly StyledProperty<Uri> SourceProperty = AvaloniaProperty.Register<NativeWebView, Uri>(
             nameof(Source), new Uri("about:blank"));
@@ -63,7 +60,8 @@ namespace Avalonia.Xpf.Controls
         static NativeWebView()
         {
 #if WPF
-            FocusableProperty.OverrideMetadata(typeof(NativeWebView), new UIPropertyMetadata(true));
+            FocusableProperty.OverrideMetadata(typeof(NativeWebView), new FrameworkPropertyMetadata(true));
+            BackgroundProperty.OverrideMetadata(typeof(NativeWebView), new FrameworkPropertyMetadata(BackgroundPropertyChangedCallback));
 #elif AVALONIA
             FocusableProperty.OverrideDefaultValue<NativeWebView>(true);
 #endif
@@ -75,6 +73,7 @@ namespace Avalonia.Xpf.Controls
 #if !WPF
             Core.Licensing.ValidateWebView();
 #endif
+            
             Initialized += OnInitialized;
             _navigationCompleted += (_, e) =>
             {
@@ -488,7 +487,7 @@ namespace Avalonia.Xpf.Controls
             }
         }
 
-        private static void DefaultBackgroundPropertyChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
+        private static void BackgroundPropertyChangedCallback(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var @this = (NativeWebView)d;
             if (e.NewValue is Brush background)
