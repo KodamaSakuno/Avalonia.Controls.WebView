@@ -55,29 +55,31 @@
                 </Border>
             </DockPanel>
         </TabItem>
-        <TabItem Header="Grid">
-            <Grid>
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto" />
-                  <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*" />
-                  <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="GridWebViewSource"
-                         Grid.Row="0" Grid.Column="0" />
-                <Button x:Name="GridWebViewButton"
-                        Content="GO"
-                        Click="GridWebViewButton_OnClick"
-                        Grid.Row="0" Grid.Column="1" />
-                <StackPanel Grid.Row="1" Grid.Column="1">
-                    <TextBlock Text="Another panel" />
-                </StackPanel>
-                <controls:NativeWebView x:Name="GridWebView"
-                               Source="https://avaloniaui.net"
-                               Grid.Row="1" Grid.Column="0"/>
-            </Grid>
+        <TabItem Header="Expander + Grid">
+            <Expander Header="Surprise">
+                <Grid>
+                    <Grid.RowDefinitions>
+                      <RowDefinition Height="Auto" />
+                      <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="GridWebViewSource"
+                             Grid.Row="0" Grid.Column="0" />
+                    <Button x:Name="GridWebViewButton"
+                            Content="GO"
+                            Click="GridWebViewButton_OnClick"
+                            Grid.Row="0" Grid.Column="1" />
+                    <StackPanel Grid.Row="1" Grid.Column="1">
+                        <TextBlock Text="Another panel" />
+                    </StackPanel>
+                    <controls:NativeWebView x:Name="GridWebView"
+                                   Source="https://avaloniaui.net"
+                                   Grid.Row="1" Grid.Column="0"/>
+                </Grid>
+            </Expander>
         </TabItem>
         <TabItem Header="WebAuthenticationBroker">
             <StackPanel>
