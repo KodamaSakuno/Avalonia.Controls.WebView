@@ -2,7 +2,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net9.0</TargetFramework>
-    <PublishAot>true</PublishAot>
+    <PublishAot Condition="'$(Configuration)' == 'Release'">true</PublishAot>
   </PropertyGroup>
 
   <PropertyGroup>
