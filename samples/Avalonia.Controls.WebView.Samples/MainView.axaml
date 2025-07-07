@@ -79,6 +79,9 @@
                 </StackPanel>
             </ScrollViewer>
         </TabItem>
+        <TabItem Header="Pdf Page">
+            <NativeWebView Source="https://sample-files.com/downloads/documents/pdf/sample-report.pdf" />
+        </TabItem>
         <TabItem Header="WebAuthenticationBroker">
             <StackPanel>
                 <TextBox x:Name="RequestUri"
