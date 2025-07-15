@@ -48,10 +48,14 @@ internal static partial class CoreWebView2Environment
             else
             {
                 var envCallback = new WebView2EnvHandler();
-                var res = CreateEnv(runtimeFunc, WebView2RunTimeType.kInstalled, options.UserDataFolder, options, envCallback);
-                if (res != 0)
+                var res = (uint)CreateEnv(runtimeFunc, WebView2RunTimeType.kInstalled, options.UserDataFolder, options, envCallback);
+                if (res == 0x80010106)
                 {
-                    envCallback.Result.TrySetException(new Win32Exception(res));
+                    envCallback.Result.TrySetException(new InvalidOperationException("WebView2 requires UI thread to have STAThread flag/attribute set."));
+                }
+                else if (res != 0)
+                {
+                    envCallback.Result.TrySetException(new Win32Exception((int)res));
                 }
                 tcs = envCallback.Result;
             }
