@@ -17,7 +17,7 @@ using Avalonia.Threading;
 namespace Avalonia.Controls.Win.WebView2;
 
 [SupportedOSPlatform("windows6.1")] // win7
-internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieManager, IWebViewAdapterWithFocus, IWebViewWithPrintToPdf, IWindowsWebView2PlatformHandle
+internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieManager, IWebViewAdapterWithFocus, IWebViewWithPrint, IWindowsWebView2PlatformHandle
 {
     private EventHandler<WebResourceRequestedEventArgs>? _webResourceRequested;
     private ICoreWebView2Controller? _controller;
@@ -190,14 +190,20 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
         _controller.SetParentWindow(parent.Handle);
     }
 
-    public void ShowPrintUI()
+    public bool ShowPrintUI()
     {
-        if (TryGetWebView2() is not ICoreWebView2_16 webView)
+        if (TryGetWebView2() is not { } webView)
         {
             throw new InvalidOperationException("WebView Adapter is not initialized");
         }
 
-        webView.ShowPrintUI(0);
+        if (TryGetWebView2() is not ICoreWebView2_16 webView16)
+        {
+            return false;
+        }
+
+        webView16.ShowPrintUI(0);
+        return true;
     }
 
     public Task<Stream> PrintToPdfStreamAsync()

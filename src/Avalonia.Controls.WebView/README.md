@@ -15,6 +15,7 @@ https://avaloniaui.net/accelerate
 - **Platform Configuration**: Supports WebView2 profiles, persistent storage paths, and many other platform-specific options
 - **Web APIs**: JavaScript execution, bidirectional messaging, cookie management, HTTP header interception
 - **Authentication**: Web authentication broker for OAuth and web-based authentication
+- **Printing**: Print web content directly from the WebView
 
 ## Quick Start
 

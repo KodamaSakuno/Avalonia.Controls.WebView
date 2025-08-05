@@ -15,7 +15,7 @@ using static Avalonia.Controls.Gtk.AvaloniaGtk;
 
 namespace Avalonia.Controls.Gtk;
 
-internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatformHandle, IWebViewWithPrintToPdf
+internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatformHandle, IWebViewWithPrint
 {
     private const string PostAvWebViewMessageName = "postAvWebViewMessage";
 
@@ -171,13 +171,14 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     {
     }
 
-    public void ShowPrintUI()
+    public bool ShowPrintUI()
     {
         RunOnGlibThreadAsync(() =>
         {
             using var operation = new GtkPrintOperation(WebViewHandle);
             operation.RunDialog(IntPtr.Zero);
         });
+        return true;
     }
 
     public async Task<Stream> PrintToPdfStreamAsync()

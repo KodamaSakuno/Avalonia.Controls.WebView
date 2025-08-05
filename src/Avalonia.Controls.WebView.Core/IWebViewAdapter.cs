@@ -404,8 +404,8 @@ internal interface IWebViewAdapterWithOffscreenBuffer : IWebViewAdapter
     Task UpdateWriteableBitmap(FrameChainBase<WriteableBitmap, PixelSize>.IProducer producer);
 }
 
-internal interface IWebViewWithPrintToPdf : IWebViewAdapter
+internal interface IWebViewWithPrint : IWebViewAdapter
 {
-    void ShowPrintUI();
+    bool ShowPrintUI();
     Task<Stream> PrintToPdfStreamAsync();
 }

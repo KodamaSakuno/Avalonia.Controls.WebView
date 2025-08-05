@@ -274,14 +274,14 @@ namespace Avalonia.Xpf.Controls
         /// <inheritdoc/>
         public void ShowPrintUI()
         {
-            if (TryGetAdapter() is Core.IWebViewWithPrintToPdf adapter)
+            if (TryGetAdapter() is Core.IWebViewWithPrint adapter)
                 adapter.ShowPrintUI();
             else
                 throw new PlatformNotSupportedException();
         }
 
         /// <inheritdoc/>
-        public Task<Stream> PrintToPdfStreamAsync() => TryGetAdapter() is Core.IWebViewWithPrintToPdf adapter ?
+        public Task<Stream> PrintToPdfStreamAsync() => TryGetAdapter() is Core.IWebViewWithPrint adapter ?
             adapter.PrintToPdfStreamAsync() :
             Task.FromException<Stream>(new PlatformNotSupportedException());
 
