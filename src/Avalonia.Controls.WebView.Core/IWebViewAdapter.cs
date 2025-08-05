@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -213,6 +214,12 @@ internal interface IWebViewHolder
     /// </summary>
     NativeWebViewCookieManager? TryGetCookieManager();
 
+    /// <summary>
+    /// Provides the Pdf data of current web page asynchronously.
+    /// </summary>
+    /// <exception cref="PlatformNotSupportedException">Platform is not supported.</exception>
+    Task<Stream> PrintToPdfStreamAsync();
+
     /// <inheritdoc cref="Avalonia.Controls.WebViewAdapterEventArgs.TryGetPlatformHandle"/>
     /// <remarks>
     /// <para>Return handle can be used to access additional native APIs by using it with PInvokes.</para> 
@@ -389,4 +396,9 @@ internal interface IWebViewAdapterWithOffscreenBuffer : IWebViewAdapter
 {
     event Action DrawRequested;
     Task UpdateWriteableBitmap(FrameChainBase<WriteableBitmap, PixelSize>.IProducer producer);
+}
+
+internal interface IWebViewWithPrintToPdf : IWebViewAdapter
+{
+    Task<Stream> PrintToPdfStreamAsync();
 }

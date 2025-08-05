@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Threading.Tasks;
 using Avalonia.Controls.Gtk;
 using Avalonia.Platform;
@@ -364,6 +365,11 @@ namespace Avalonia.Xpf.Controls
         /// <inheritdoc/>
         public Core.NativeWebViewCookieManager? TryGetCookieManager() => 
             TryGetAdapter() is Core.IWebViewAdapterWithCookieManager adapter ? new Core.NativeWebViewCookieManager(adapter) : null;
+
+        /// <inheritdoc/>
+        public Task<Stream> PrintToPdfStreamAsync() => TryGetAdapter() is Core.IWebViewWithPrintToPdf adapter ?
+            adapter.PrintToPdfStreamAsync() :
+            Task.FromException<Stream>(new PlatformNotSupportedException());
 
         /// <summary>
         /// If dialog is based on a <see cref="Window"/>, returns its instance to allow full control.
