@@ -33,6 +33,7 @@ internal static class WebViewAdapter
         if (OperatingSystem.IsAndroid())
         {
             var args = new AndroidWebViewEnvironmentRequestedEventArgs();
+            environmentRequested(args);
             return new NativeHostAdapterFactory((parent, _) => new Android.AndroidWebViewAdapter(parent, args));
         }
 #else
@@ -97,7 +98,9 @@ internal static class WebViewAdapter
 
         // if (OperatingSystemEx.IsBrowser())
         // {
-        //     new Core.Browser.BrowserIFrameAdapter();
+        //     var args = new GtkWebViewEnvironmentRequestedEventArgs();
+        //     environmentRequested(args);
+        //     return new NativeHostAdapterFactory((parent, _) => new Browser.BrowserIFrameAdapter(args));
         // }
 #endif
 
