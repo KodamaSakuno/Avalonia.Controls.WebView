@@ -5,13 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Windows.Win32;
 using Windows.Win32.Foundation;
-using Avalonia.Controls.Platform;
 using Avalonia.Controls.Win.WebView1.Interop;
-using Avalonia.Controls.Win.WebView2;
 using Avalonia.Logging;
 using Avalonia.Media;
 using Avalonia.Platform;
-using Avalonia.Threading;
 
 namespace Avalonia.Controls.Win.WebView1;
 
@@ -185,7 +182,7 @@ internal sealed class WebView1Adapter : IWebViewAdapter, IWindowsWebView1Platfor
 
     public void SizeChanged(PixelSize containerSize)
     {
-        Dispatcher.UIThread.Post(() =>
+        WebViewDispatcher.InvokeAsync(() =>
         {
             if (PInvoke.GetWindowRect(new HWND(Handle), out var rect)
                 && _webViewControlSite is not null)
@@ -240,7 +237,7 @@ internal sealed class WebView1Adapter : IWebViewAdapter, IWindowsWebView1Platfor
     {
         // Since process was technically created on UI thread, it's expected to release it on UI thread.
         // Not to mention, this method call might be done on finalizer thread.
-        Dispatcher.UIThread.InvokeAsync(() => _process.ReleaseOne());
+        WebViewDispatcher.InvokeAsync(() => _process.ReleaseOne());
     }
 
     public void Dispose()

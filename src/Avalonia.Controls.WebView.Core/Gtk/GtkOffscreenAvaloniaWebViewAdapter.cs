@@ -4,7 +4,6 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Avalonia.Platform;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
 using static Avalonia.Controls.Gtk.GtkInterop;
 using static Avalonia.Controls.Gtk.AvaloniaGtk;
@@ -25,9 +24,8 @@ internal unsafe class GtkOffscreenAvaloniaWebViewAdapter(GtkWebViewEnvironmentRe
     //private GtkSignal? _contextMenuSignal;
     private HashSet<IDisposable> _openedMenus = new();
 
-    protected override void InitializeSafe()
+    protected override void InitializeSignals()
     {
-        base.InitializeSafe();
         _showOptionMenuSignal = new GtkSignal(WebViewHandle, "show-option-menu", s_showOptionMenuCallback, this);
         //_contextMenuSignal = new GtkSignal(WebViewHandle, "context-menu", s_contextMenuCallback, this);
     }
@@ -108,7 +106,7 @@ internal unsafe class GtkOffscreenAvaloniaWebViewAdapter(GtkWebViewEnvironmentRe
 
         public void ClosedRequested()
         {
-            Dispatcher.UIThread.InvokeAsync(() => { _contextMenu?.Close(); });
+            WebViewDispatcher.InvokeAsync(() => { _contextMenu?.Close(); });
         }
 
         public void Open()
@@ -116,7 +114,7 @@ internal unsafe class GtkOffscreenAvaloniaWebViewAdapter(GtkWebViewEnvironmentRe
             _adapter._openedMenus.Add(this);
             var nativeMenuItems = ExtractMenu(_menu);
 
-            Dispatcher.UIThread.InvokeAsync(() =>
+            WebViewDispatcher.InvokeAsync(() =>
             {
                 var actualWebView = (Control)_adapter._parent.GetVisualParent()!;
                 var pixelRect = new PixelRect(_rect.x, _rect.y, _rect.width, _rect.height);

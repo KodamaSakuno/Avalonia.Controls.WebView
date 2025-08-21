@@ -11,7 +11,6 @@ using Avalonia.Controls.Win.WebView2.Interop;
 using Avalonia.Logging;
 using Avalonia.Media;
 using Avalonia.Platform;
-using Avalonia.Threading;
 
 namespace Avalonia.Controls.Win.WebView2;
 
@@ -158,7 +157,7 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
 
     public virtual void SizeChanged(PixelSize containerSize)
     {
-        Dispatcher.UIThread.Post(() =>
+        WebViewDispatcher.InvokeAsync(() =>
         {
             if (PInvoke.GetWindowRect(new HWND(Handle), out var rect)
                 && _controller is not null)

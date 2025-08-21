@@ -11,7 +11,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform;
-using Avalonia.Threading;
 
 namespace Avalonia.Controls.Macios;
 
@@ -175,10 +174,10 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
         _scriptHandler.Dispose();
         _navDelegate.Dispose();
         _config.Dispose();
-        Dispatcher.UIThread.InvokeAsync(() =>
+        WebViewDispatcher.InvokeAsync(() =>
         {
             _webView.Dispose();
-        }, DispatcherPriority.Background);
+        });
     }
 
     public Color DefaultBackground
@@ -386,7 +385,7 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
             Key = physicalKey.ToQwertyKey(),
             KeyModifiers = modifiers
         };
-        Dispatcher.UIThread.Invoke(() => Input?.Invoke(args), DispatcherPriority.Input);
+        WebViewDispatcher.InvokeInput(() => Input?.Invoke(args));
         return args.Handled;
     }
 

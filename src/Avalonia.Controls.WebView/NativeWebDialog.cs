@@ -39,6 +39,13 @@ namespace Avalonia.Xpf.Controls
         private bool _disposed;
         private bool _dialogInitialized;
 
+        static NativeWebDialog()
+        {
+#if WPF
+            WpfWebViewDispatcher.Setup();
+#endif
+        }
+        
         public NativeWebDialog()
         {
             // XPF customers don't need a special license to use XPF controls.

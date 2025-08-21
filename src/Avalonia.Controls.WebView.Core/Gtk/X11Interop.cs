@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace Avalonia.Controls.Gtk;
 
-public static partial class X11Interop
+internal static partial class X11Interop
 {
     private const string libX11 = "libX11.so.6";
 

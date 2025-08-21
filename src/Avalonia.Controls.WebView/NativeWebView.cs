@@ -71,6 +71,7 @@ namespace Avalonia.Xpf.Controls
         static NativeWebView()
         {
 #if WPF
+            WpfWebViewDispatcher.Setup();
             FocusableProperty.OverrideMetadata(typeof(NativeWebView), new FrameworkPropertyMetadata(true));
             BackgroundProperty.OverrideMetadata(typeof(NativeWebView), new FrameworkPropertyMetadata(BackgroundPropertyChangedCallback));
 #elif AVALONIA

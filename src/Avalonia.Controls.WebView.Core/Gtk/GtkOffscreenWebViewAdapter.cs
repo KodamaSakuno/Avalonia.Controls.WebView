@@ -7,7 +7,6 @@ using Avalonia.Controls.Rendering;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Avalonia.Threading;
 using static Avalonia.Controls.Gtk.GtkInterop;
 using static Avalonia.Controls.Gtk.AvaloniaGtk;
 
@@ -261,7 +260,10 @@ internal unsafe class GtkOffscreenWebViewAdapter(GtkWebViewEnvironmentRequestedE
         gtk_widget_set_has_window(WebViewHandle, true);
         gtk_widget_realize(WebViewHandle);
         gtk_widget_show_all(_windowHandle);
+    }
 
+    protected override void InitializeSignals()
+    {
         _drawSignal = new GtkSignal(WebViewHandle, "draw", s_drawCallback, this);
     }
 
@@ -296,7 +298,7 @@ internal unsafe class GtkOffscreenWebViewAdapter(GtkWebViewEnvironmentRequestedE
             return false;
         }
 
-        Dispatcher.UIThread.InvokeAsync(() => adapter.DrawRequested?.Invoke());
+        WebViewDispatcher.InvokeAsync(() => adapter.DrawRequested?.Invoke());
         return false;
     }
 

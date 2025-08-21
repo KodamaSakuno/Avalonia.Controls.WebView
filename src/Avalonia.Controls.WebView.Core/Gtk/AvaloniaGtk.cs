@@ -5,7 +5,6 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Avalonia.Logging;
-using Avalonia.Threading;
 
 namespace Avalonia.Controls.Gtk;
 
@@ -86,9 +85,7 @@ internal static class AvaloniaGtk
         var task = CachedDelegate<T>.Run(callback);
         if (!task.IsCompleted)
         {
-            var frame = new DispatcherFrame();
-            _ = task.ContinueWith(static (_, s) => ((DispatcherFrame)s!).Continue = false, frame);
-            Dispatcher.UIThread.PushFrame(frame);
+            WebViewDispatcher.PushFrameForTask(task);
         }
 
         return task.GetAwaiter().GetResult();
@@ -96,7 +93,7 @@ internal static class AvaloniaGtk
 
     public static void RunOnGlibThreadFrame(Action callback)
     {
-        _ = RunOnGlibThreadFrame(() =>
+        _ = RunOnGlibThread(() =>
         {
             callback();
             return (object?)null;

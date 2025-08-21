@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Avalonia.Controls.Utils;
 using Avalonia.Media;
 using Avalonia.Platform;
-using Avalonia.Threading;
 using static Avalonia.Controls.Gtk.GtkInterop;
 using static Avalonia.Controls.Gtk.AvaloniaGtk;
 
@@ -58,11 +57,14 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     public GtkWebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs environmentArgs)
     {
         EnvironmentArgs = environmentArgs;
-        RunOnGlibThread(() =>
+        // Blocking initialization of WebView on the GTK thread
+        RunOnGlibThreadFrame(() =>
         {
             InitializeSafe();
             IsInitialized = true;
         });
+        // Async initialization of signals on the GTK thread, avoids threadlock, if signal calls back too soon. 
+        RunOnGlibThreadAsync(InitializeSignals);
         // ReSharper disable once VirtualMemberCallInConstructor
         OnInitialized();
     }
@@ -267,7 +269,10 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
         {
             webkit_settings_set_user_agent_with_application_details(settings, appUserAgent, null);
         }
+    }
 
+    protected virtual void InitializeSignals()
+    {
         _loadChangedSignal = new GtkSignal(WebViewHandle, "load-changed", s_loadChangedCallback, this);
         _decidePolicySignal = new GtkSignal(WebViewHandle, "decide-policy", s_decidePolicyCallback, this);
         _focusInSignal = new GtkSignal(WebViewHandle, "focus-in-event", s_focusInCallback, this);
@@ -313,7 +318,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
                     Uri.TryCreate(urlStr, UriKind.Absolute, out var url))
                 {
                     var args = new WebViewNavigationStartingEventArgs { Request = url };
-                    Dispatcher.UIThread.Invoke(() => adapter.NavigationStarted?.Invoke(adapter, args));
+                    WebViewDispatcher.Invoke(() => adapter.NavigationStarted?.Invoke(adapter, args));
                     return args.Cancel;
                 }
 
@@ -324,7 +329,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
                     Uri.TryCreate(winUrlStr, UriKind.Absolute, out var winUrl))
                 {
                     var args = new WebViewNewWindowRequestedEventArgs { Request = winUrl };
-                    Dispatcher.UIThread.Invoke(() => adapter.NewWindowRequested?.Invoke(adapter, args));
+                    WebViewDispatcher.Invoke(() => adapter.NewWindowRequested?.Invoke(adapter, args));
                     return args.Handled;
                 }
 
@@ -369,7 +374,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
         {
             case WebKitLoadEvent.Committed:
                 adapter._source = adapter.GetSourceUnsafe();
-                Dispatcher.UIThread.InvokeAsync(() => adapter.NavigationCompleted?
+                WebViewDispatcher.InvokeAsync(() => adapter.NavigationCompleted?
                     .Invoke(adapter,
                         new WebViewNavigationCompletedEventArgs
                         {
@@ -425,7 +430,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
             return false;
         }
 
-        Dispatcher.UIThread.InvokeAsync(() =>
+        WebViewDispatcher.InvokeAsync(() =>
         {
             adapter.LostFocus?.Invoke(adapter, IWebViewAdapterWithFocus.LostFocusDirection.Unknown);
         });
@@ -440,7 +445,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
             return false;
         }
 
-        Dispatcher.UIThread.InvokeAsync(() =>
+        WebViewDispatcher.InvokeAsync(() =>
         {
             adapter.GotFocus?.Invoke(adapter, EventArgs.Empty);
         });
@@ -459,7 +464,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
 
         var result = GetValueFromJsResult(jsResult);
 
-        Dispatcher.UIThread.InvokeAsync(() =>
+        WebViewDispatcher.InvokeAsync(() =>
         {
             adapter.WebMessageReceived?.Invoke(adapter,
                 new WebMessageReceivedEventArgs { Body = result });
@@ -501,7 +506,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
         // Because GTK threads is waiting for the sync UI Dispatcher call.
         // While some of the sync webview APIs would wait for the GTK thread to return value (like, get_Url).
         // TODO: what to do here? Can be replaced with InvokeAsync, but then headers won't be accessible 
-        Dispatcher.UIThread.Invoke(() => adapter.WebResourceRequested?.Invoke(adapter, args));
+        WebViewDispatcher.Invoke(() => adapter.WebResourceRequested?.Invoke(adapter, args));
 
         headersWrapper.Dispose();
     }

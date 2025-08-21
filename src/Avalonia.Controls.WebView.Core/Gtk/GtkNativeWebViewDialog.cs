@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using Avalonia.Media;
 using Avalonia.Platform;
-using Avalonia.Threading;
 using static Avalonia.Controls.Gtk.GtkInterop;
 using static Avalonia.Controls.Gtk.AvaloniaGtk;
 
@@ -44,7 +43,7 @@ internal sealed class GtkNativeWebViewDialog : INativeWebViewDialog, IGtkWebView
             gtk_container_add(scrolled, nativeWebView.WebViewHandle);
             gtk_container_add(window, scrolled);
             _nativeWebView = nativeWebView;
-            Dispatcher.UIThread.InvokeAsync(() =>
+            WebViewDispatcher.InvokeAsync(() =>
                 AdapterCreated?.Invoke(this, new WebViewAdapterEventArgs(_nativeWebView)));
         });
     }
