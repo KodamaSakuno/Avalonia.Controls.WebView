@@ -26,6 +26,7 @@ namespace Avalonia.Controls.Android;
 internal class AndroidWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterWithInputRedirect, IWebViewAdapterWithCookieManager, IAndroidWebViewPlatformHandle
 {
     private const string PostAvWebViewMessageName = "postAvWebViewMessage";
+    private static bool _canSetDataDirectorySuffix = true;
     private readonly WebView _webView;
     private readonly JavaScriptInterface _jsInterface;
 
@@ -34,11 +35,29 @@ internal class AndroidWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapter
         var parentContext = (parent as AndroidViewControlHandle)?.View.Context
                             ?? global::Android.App.Application.Context;
 
+        if (_canSetDataDirectorySuffix && environmentArgs.DataDirectorySuffix is { Length :> 0 } dataDirectorySuffix
+            && OperatingSystem.IsAndroidVersionAtLeast(28))
+        {
+            WebView.SetDataDirectorySuffix(dataDirectorySuffix);
+        }
+
+        _canSetDataDirectorySuffix = false;
         _webView = new WebView(parentContext);
         _jsInterface = new JavaScriptInterface(this);
 
         _webView.Settings.JavaScriptEnabled = true;
         _webView.Settings.DomStorageEnabled = true;
+
+        _webView.Settings.CacheMode = environmentArgs.DisableCache
+            ? CacheModes.NoCache
+            : CacheModes.Default;
+
+        if (environmentArgs.ApplicationNameForUserAgent is { Length: > 0 } userAgentName)
+        {
+            // Append the application name to the default user agent string
+            _webView.Settings.UserAgentString = $"{_webView.Settings.UserAgentString} {userAgentName}";
+        }
+
         if (environmentArgs.BuiltInZoomControls)
         {
             _webView.Settings.BuiltInZoomControls = true;
