@@ -9,18 +9,20 @@ namespace Avalonia.Controls.WebView.Tests;
 public class HeadlessAdapterTests : HeadlessTestsBase
 {
     [AvaloniaFact]
-    public void Should_Initialize_As_Headless()
+    public async Task Should_Initialize_As_Headless()
     {
         var window = new Window();
         var webView = new NativeWebView();
         window.Content = webView;
         window.Show();
 
+        await WaitForAdapterCreation(webView);
+
         Assert.Equal("HeadlessWebViewAdapter", webView.TryGetPlatformHandle()?.HandleDescriptor);
     }
 
     [AvaloniaFact]
-    public void Should_Delay_Adapter_Creation()
+    public async Task Should_Delay_Adapter_Creation()
     {
         var window = new Window();
         var webView = new NativeWebView();
@@ -39,6 +41,9 @@ public class HeadlessAdapterTests : HeadlessTestsBase
 
         Assert.False(adapterCreated);
         tcs.SetResult();
+
+        await WaitForAdapterCreation(webView);
+
         Assert.True(adapterCreated);
     }
 
@@ -141,6 +146,8 @@ public class HeadlessAdapterTests : HeadlessTestsBase
         window.Content = webView;
         window.Show();
 
+        await WaitForAdapterCreation(webView);
+
         webView.Source = new Uri("https://slow.com");
         Assert.True(webView.Stop());
         await Task.Delay(120);
@@ -160,6 +167,8 @@ public class HeadlessAdapterTests : HeadlessTestsBase
         webView.NewWindowRequested += (_, e) => newWindowUri = e.Request;
         window.Content = webView;
         window.Show();
+
+        await WaitForAdapterCreation(webView);
 
         // Simulate invokeCSharpAction
         await webView.InvokeScript("window.external.invokeCSharpAction('msg')");

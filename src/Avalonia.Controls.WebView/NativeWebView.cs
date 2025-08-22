@@ -1,8 +1,6 @@
 ﻿#if AVALONIA || WPF
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
 using AvInput = Avalonia.Input;
@@ -16,6 +14,7 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using ControlSize = System.Windows.Size;
 #elif AVALONIA
+using System.Linq;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -85,8 +84,6 @@ namespace Avalonia.Xpf.Controls
 #if !WPF
             Core.Licensing.ValidateWebView();
 #endif
-            
-            Initialized += OnInitialized;
             _navigationCompleted += (_, e) =>
             {
                 _ignoreNavigation = true;
@@ -373,14 +370,17 @@ namespace Avalonia.Xpf.Controls
             _newWindowRequested?.Invoke(this, e);
         }
 
-        private void OnInitialized(object? sender, EventArgs e)
-#if WPF
-            // Due to differences in initialization order between Avalonia and WPF, we delay adapter creation on WPF,
-            // because it's happening way too early there, even before subscribers were ready  
-            => Dispatcher.InvokeAsync(() =>
-#endif
+#if AVALONIA
+        protected override async void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
         {
-            var adapterFactory = Core.WebViewAdapter.CreateFactory(args => EnvironmentRequested?.Invoke(this, args));
+            base.OnAttachedToVisualTree(e);
+#elif WPF
+        protected override async void OnVisualParentChanged(DependencyObject oldParent)
+        {
+            base.OnVisualParentChanged(oldParent);
+#endif
+
+            var adapterFactory = await Core.WebViewAdapter.CreateFactory(args => EnvironmentRequested?.Invoke(this, args));
             INativeWebViewControlImpl controlHostImpl = adapterFactory switch
             {
 #if !WPF
@@ -405,9 +405,6 @@ namespace Avalonia.Xpf.Controls
             OnVisualChildrenChanged(visual, null);
 #endif
         }
-#if WPF
-        );
-#endif
 
         private void WithFocusOnGotFocus(object? sender, EventArgs e)
         {

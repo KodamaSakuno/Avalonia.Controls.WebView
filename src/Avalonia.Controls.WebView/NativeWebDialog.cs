@@ -281,21 +281,21 @@ namespace Avalonia.Xpf.Controls
         /// <inheritdoc cref="Core.INativeWebViewDialog.Closing"/>
         public event EventHandler? Closing;
         /// <inheritdoc cref="Core.INativeWebViewDialog.Show()"/>
-        public void Show() => GetOrInitialize().Show();
+        public async void Show() => (await GetOrInitialize()).Show();
 
 #if WPF
         /// <summary>
         /// Opens the WebView dialog with <see cref="Window"/> owner.
         /// </summary>
-        public void Show(Window owner)
+        public async void Show(Window owner)
 #elif AVALONIA
         /// <summary>
         /// Opens the WebView dialog with <see cref="TopLevel"/> owner.
         /// </summary>
-        public void Show(TopLevel owner)
+        public async void Show(TopLevel owner)
 #endif
         {
-            var impl = GetOrInitialize();
+            var impl = await GetOrInitialize();
 
 #if WPF
             var avTopLevel = XpfWpfAbstraction.GetAvaloniaTopLevelForWindow(owner);
@@ -319,13 +319,13 @@ namespace Avalonia.Xpf.Controls
             }
         }
 
-        private Core.INativeWebViewDialog GetOrInitialize()
+        private async Task<Core.INativeWebViewDialog> GetOrInitialize()
         {
             if (TryGetImpl() is { } impl)
             {
                 return impl;
             }
-            Initialize();
+            await Initialize();
             return TryGetImpl() ?? throw new InvalidOperationException("");
         }
 
@@ -375,25 +375,26 @@ namespace Avalonia.Xpf.Controls
         /// <summary>
         /// If dialog is based on a <see cref="Window"/>, returns its instance to allow full control.
         /// </summary>
-        public Window? TryGetWindow() => GetOrInitialize() as WindowNativeWebViewDialog;
+        public Window? TryGetWindow() => GetOrInitialize() is { IsCompleted: true, IsFaulted: false } task ?
+            task.Result as WindowNativeWebViewDialog :
+            null;
 
-        internal bool Show(IPlatformHandle owner) => GetOrInitialize().Show(owner);
+        internal async Task<bool> Show(IPlatformHandle owner) => (await GetOrInitialize()).Show(owner);
 
-        private void Initialize()
+        private async Task Initialize()
         {
             Core.INativeWebViewDialog dialogImpl;
 
             // Special case for GTK, as we want to use GTK window instead of Avalonia window there.
             if (Core.OperatingSystemEx.IsLinux() && !Core.WebViewAdapter.UseHeadless)
             {
-                var args = new GtkWebViewEnvironmentRequestedEventArgs();
-                EnvironmentRequested?.Invoke(this, args);
-                dialogImpl = new GtkNativeWebViewDialog(args);
+                dialogImpl = await GtkNativeWebViewDialog.CreateAsync(args => EnvironmentRequested?.Invoke(this, args));
             }
             else
             {
-                var factory = Core.WebViewAdapter.CreateFactory(args => EnvironmentRequested?.Invoke(this, args));   
-                dialogImpl = new WindowNativeWebViewDialog(factory);
+                // Don't await factoryTask here, we want to get Window accessible as early as possible
+                var factoryTask = Core.WebViewAdapter.CreateFactory(args => EnvironmentRequested?.Invoke(this, args));   
+                dialogImpl = new WindowNativeWebViewDialog(factoryTask);
             }
 
             dialogImpl.AdapterCreated += DialogImplOnAdapterCreated;

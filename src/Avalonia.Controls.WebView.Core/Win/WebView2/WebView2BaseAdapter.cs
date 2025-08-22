@@ -8,23 +8,17 @@ using System.Threading.Tasks;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Avalonia.Controls.Win.WebView2.Interop;
-using Avalonia.Logging;
 using Avalonia.Media;
 using Avalonia.Platform;
 
 namespace Avalonia.Controls.Win.WebView2;
 
 [SupportedOSPlatform("windows6.1")] // win7
-internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieManager, IWebViewAdapterWithFocus, IWindowsWebView2PlatformHandle
+internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller controller)
+    : IWebViewAdapterWithCookieManager, IWebViewAdapterWithFocus, IWindowsWebView2PlatformHandle
 {
     private EventHandler<WebResourceRequestedEventArgs>? _webResourceRequested;
-    private ICoreWebView2Controller? _controller;
     private Action? _subscriptions;
-
-    protected WebView2BaseAdapter(IPlatformHandle parent, WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
-    {
-        Initialize(parent, environmentArgs);
-    }
 
     public abstract IntPtr Handle { get; }
     public abstract string? HandleDescriptor { get; }
@@ -33,7 +27,7 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
     {
         try
         {
-            return _controller?.GetCoreWebView2();
+            return controller?.GetCoreWebView2();
         }
         // That's what WPF control does.
         catch (COMException ex) when (ex.HResult == -2147019873)
@@ -41,8 +35,6 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
             return null;
         }
     }
-
-    public bool IsInitialized { get; private set; }
 
     public bool CanGoBack => TryGetWebView2()?.GetCanGoBack() == 1;
 
@@ -81,13 +73,12 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
 
     public event EventHandler? GotFocus;
     public event EventHandler<IWebViewAdapterWithFocus.LostFocusDirection>? LostFocus;
-    public event EventHandler? Initialized;
 
     public Color DefaultBackground
     {
         set
         {
-            if (_controller is ICoreWebView2Controller2 controller2)
+            if (controller is ICoreWebView2Controller2 controller2)
             {
                 controller2.SetDefaultBackgroundColor(new COREWEBVIEW2_COLOR
                 {
@@ -159,40 +150,34 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
     {
         WebViewDispatcher.InvokeAsync(() =>
         {
-            if (PInvoke.GetWindowRect(new HWND(Handle), out var rect)
-                && _controller is not null)
+            if (PInvoke.GetWindowRect(new HWND(Handle), out var rect))
             {
-                if (_controller is ICoreWebView2Controller3 controller3)
+                if (controller is ICoreWebView2Controller3 controller3)
                 {
                     controller3.SetBoundsMode(COREWEBVIEW2_BOUNDS_MODE.COREWEBVIEW2_BOUNDS_MODE_USE_RAW_PIXELS);
                 }
 
-                _controller.SetBounds(new tagRECT
+                controller.SetBounds(new tagRECT
                 {
                     right = rect.Width,
                     bottom = rect.Height
                 });
-                _controller.NotifyParentWindowPositionChanged();
+                controller.NotifyParentWindowPositionChanged();
             }
         });
     }
 
     public virtual void SetParent(IPlatformHandle parent)
     {
-        if (_controller is null)
-            return;
-
         if (parent.HandleDescriptor != "HWND")
             throw new InvalidOperationException("IPlatformHandle.HandleDescriptor must be HWND");
 
-        _controller.SetParentWindow(parent.Handle);
+        controller.SetParentWindow(parent.Handle);
     }
 
     public bool Focus()
     {
-        if (_controller is null)
-            return false;
-        _controller.MoveFocus(0 /* Programmatic */);
+        controller.MoveFocus(0 /* Programmatic */);
         return true;
     }
 
@@ -206,60 +191,42 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
     internal EventHandler? GetGotFocus() => GotFocus;
     internal EventHandler<IWebViewAdapterWithFocus.LostFocusDirection>? GetLostFocus() => LostFocus;
 
-    private async void Initialize(IPlatformHandle parentHost, WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
+    public async Task InitializeAsync(WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
     {
-        try
+        var addScriptCompletion = new AddScriptToExecuteOnDocumentCreatedCompletedHandler();
+        var webView = TryGetWebView2() ?? throw new InvalidOperationException("WebView2 is not initialized.");
+        webView.AddScriptToExecuteOnDocumentCreated(
+            "function invokeCSharpAction(data){window.chrome.webview.postMessage(data);}", addScriptCompletion);
+        _ = await addScriptCompletion.Result.Task;
+
+        controller.SetIsVisible(1);
+
+        if (controller is ICoreWebView2Controller3 controller3)
         {
-            var env = await CoreWebView2Environment.CreateAsync(environmentArgs);
-            var controller = await CreateWebView2Controller(env, parentHost.Handle, environmentArgs);
-            var webView = controller.GetCoreWebView2();
-
-            var addScriptCompletion = new AddScriptToExecuteOnDocumentCreatedCompletedHandler();
-            webView.AddScriptToExecuteOnDocumentCreated(
-                "function invokeCSharpAction(data){window.chrome.webview.postMessage(data);}", addScriptCompletion);
-            _ = await addScriptCompletion.Result.Task;
-
-            controller.SetIsVisible(1);
-
-            if (controller is ICoreWebView2Controller3 controller3)
-            {
-                controller3.SetShouldDetectMonitorScaleChanges(0);
-            }
-
-            var settings = webView.GetSettings();
-            settings.SetAreDevToolsEnabled(environmentArgs.EnableDevTools);
-
-            // https://github.com/MicrosoftEdge/WebView2Feedback/issues/4993
-            // if (settings is ICoreWebView2Settings2 settings2 
-            //     && environmentArgs.UserAgent is { Length: > 0 } userAgent)
-            // {
-            //     settings2.SetUserAgent(userAgent);
-            // }
-
-            _controller = controller;
-            SizeChanged(default);
-
-            _subscriptions = AddHandlers(controller, webView);
-
-            if (_webResourceRequested is not null)
-            {
-                webView.AddWebResourceRequestedFilter("*", 0);
-            }
-
-            IsInitialized = true;
-            Initialized?.Invoke(this, EventArgs.Empty);
+            controller3.SetShouldDetectMonitorScaleChanges(0);
         }
-        catch (Exception ex)
+
+        var settings = webView.GetSettings();
+        settings.SetAreDevToolsEnabled(environmentArgs.EnableDevTools);
+
+        // https://github.com/MicrosoftEdge/WebView2Feedback/issues/4993
+        // if (settings is ICoreWebView2Settings2 settings2 
+        //     && environmentArgs.UserAgent is { Length: > 0 } userAgent)
+        // {
+        //     settings2.SetUserAgent(userAgent);
+        // }
+
+        SizeChanged(default);
+
+        _subscriptions = AddHandlers(webView);
+
+        if (_webResourceRequested is not null)
         {
-            Logger.TryGet(LogEventLevel.Error, "WebView")?
-                .Log(null, "WebView2 initialization failed with unhandled exception", ex);
+            webView.AddWebResourceRequestedFilter("*", 0);
         }
     }
 
-    protected abstract Task<ICoreWebView2Controller> CreateWebView2Controller(ICoreWebView2Environment env,
-        IntPtr handle, WindowsWebView2EnvironmentRequestedEventArgs environmentArgs);
-
-    private Action AddHandlers(ICoreWebView2Controller controller, ICoreWebView2 webView)
+    private Action AddHandlers(ICoreWebView2 webView)
     {
         var callbacks = new WebViewCallbacks(new WeakReference<WebView2BaseAdapter>(this));
         webView.add_NavigationStarting(callbacks, out var token1);
@@ -345,7 +312,7 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
     {
         if (disposing)
         {
-            _controller?.Close();
+            controller?.Close();
             _subscriptions?.Invoke();
         }
     }
@@ -365,7 +332,6 @@ internal abstract partial class WebView2BaseAdapter : IWebViewAdapterWithCookieM
         new(ComInterfaceMarshaller<ICoreWebView2>.ConvertToUnmanaged(webView)) :
         IntPtr.Zero;
 
-    unsafe IntPtr IWindowsWebView2PlatformHandle.CoreWebView2Controller => _controller is not null ?
-        new(ComInterfaceMarshaller<ICoreWebView2Controller>.ConvertToUnmanaged(_controller)) :
-        IntPtr.Zero;
+    unsafe IntPtr IWindowsWebView2PlatformHandle.CoreWebView2Controller =>
+        new(ComInterfaceMarshaller<ICoreWebView2Controller>.ConvertToUnmanaged(controller));
 }

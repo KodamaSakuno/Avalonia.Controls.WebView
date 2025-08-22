@@ -38,17 +38,17 @@ namespace Avalonia.Xpf.Controls
             }
 
             _webViewReadyCompletion = new TaskCompletionSource<IWebViewAdapter?>();
-            var adapter = factory.Invoke(parent, p => base.CreateNativeControlCore(p));
-            if (adapter.IsInitialized)
-            {
-                WebViewAdapterOnInitialized(adapter, EventArgs.Empty);
-            }
-            else
-            {
-                adapter.Initialized += WebViewAdapterOnInitialized;
-            }
 
-            return adapter;
+            var adapterWrapper = factory.InvokeAsync(parent, p => base.CreateNativeControlCore(p));
+            CompleteAdapter(adapterWrapper);
+            return adapterWrapper.AdapterHandle;
+
+            // ReSharper disable once AsyncVoidMethod - let it flow to the dispatcher
+            async void CompleteAdapter(WebViewAdapter.AdapterWrapper wrapper)
+            {
+                var adapter = await wrapper.AdapterInitializeTask;
+                WebViewAdapterOnInitialized(adapter);
+            }
         }
 
         /// <inheritdoc />
@@ -74,16 +74,13 @@ namespace Avalonia.Xpf.Controls
 
                 _webViewReadyCompletion?.TrySetCanceled();
                 _webViewReadyCompletion = null;
-                adapter.Initialized -= WebViewAdapterOnInitialized;
                 AdapterDestroyed?.Invoke(this, adapter);
                 adapter.Dispose();
             }
         }
 
-        private void WebViewAdapterOnInitialized(object? sender, EventArgs e)
+        private void WebViewAdapterOnInitialized(IWebViewAdapter adapter)
         {
-            Core.WebViewDispatcher.CheckAccess();
-            var adapter = (IWebViewAdapter)sender!;
             _webViewReadyCompletion?.TrySetResult(adapter);
             AdapterCreated?.Invoke(this, adapter);
         }

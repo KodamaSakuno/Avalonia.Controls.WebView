@@ -332,9 +332,6 @@ internal interface IWebView
 
 internal interface IWebViewAdapter : IWebView, IDisposable, IPlatformHandle
 {
-    bool IsInitialized { get; }
-    event EventHandler? Initialized;
-
     Color DefaultBackground { set; }
 
     void SizeChanged(PixelSize containerSize);

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using Avalonia.Media;
 using Avalonia.Platform;
 using static Avalonia.Controls.Gtk.GtkInterop;
@@ -21,31 +22,26 @@ internal sealed class GtkNativeWebViewDialog : INativeWebViewDialog, IGtkWebView
     private bool _canUserResizeTemp = true;
     private bool _isShown;
 
-    public GtkNativeWebViewDialog(GtkWebViewEnvironmentRequestedEventArgs args)
+    private sealed class DialogGtkWebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs args) : GtkWebViewAdapter(args);
+
+    private GtkNativeWebViewDialog(GtkWebViewEnvironmentRequestedEventArgs args)
     {
-        _windowHandle = RunOnGlibThread(() =>
-        {
-            var window = gtk_window_new(0 /* GTK_WINDOW_TOPLEVEL */);
-            gtk_window_set_default_size(window, 800, 600);
-            return window;
-        });
+        _windowHandle = gtk_window_new(0 /* GTK_WINDOW_TOPLEVEL */);
+        gtk_window_set_default_size(_windowHandle, 800, 600);
+        _signal = new GtkSignal(_windowHandle, "delete-event", s_deleteEventCallback, this);
+        var scrolled = gtk_scrolled_window_new(IntPtr.Zero, IntPtr.Zero);
 
-        var nativeWebView = new GtkWebViewAdapter(args);
+        var nativeWebView = new DialogGtkWebViewAdapter(args);
+        gtk_container_add(scrolled, nativeWebView.WebViewHandle);
+        gtk_container_add(_windowHandle, scrolled);
+        _nativeWebView = nativeWebView;
+    }
 
-        RunOnGlibThreadAsync(() =>
-        {
-            var window = _windowHandle;
-            if (window == IntPtr.Zero)
-                return;
-
-            _signal = new GtkSignal(window, "delete-event", s_deleteEventCallback, this);
-            var scrolled = gtk_scrolled_window_new(IntPtr.Zero, IntPtr.Zero);
-            gtk_container_add(scrolled, nativeWebView.WebViewHandle);
-            gtk_container_add(window, scrolled);
-            _nativeWebView = nativeWebView;
-            WebViewDispatcher.InvokeAsync(() =>
-                AdapterCreated?.Invoke(this, new WebViewAdapterEventArgs(_nativeWebView)));
-        });
+    public static Task<INativeWebViewDialog> CreateAsync(Action<WebViewEnvironmentRequestedEventArgs> environmentRequested)
+    {
+        var args = new GtkWebViewEnvironmentRequestedEventArgs();
+        environmentRequested(args);
+        return RunOnGlibThreadAsync(INativeWebViewDialog () => new GtkNativeWebViewDialog(args));
     }
 
     public bool CanUserResize
@@ -64,9 +60,11 @@ internal sealed class GtkNativeWebViewDialog : INativeWebViewDialog, IGtkWebView
         }
     }
 
-    public event EventHandler? Closing;
-
     public IWebViewAdapter? TryGetAdapter() => _nativeWebView;
+
+    public event EventHandler? Closing;
+    public event EventHandler<WebViewAdapterEventArgs>? AdapterCreated;
+    public event EventHandler<WebViewAdapterEventArgs>? AdapterDestroyed;
 
     public Color DefaultBackground
     {
@@ -167,9 +165,6 @@ internal sealed class GtkNativeWebViewDialog : INativeWebViewDialog, IGtkWebView
         RunOnGlibThread(() => gtk_window_move(_windowHandle, x, y));
         return true;
     }
-
-    public event EventHandler<WebViewAdapterEventArgs>? AdapterCreated;
-    public event EventHandler<WebViewAdapterEventArgs>? AdapterDestroyed;
 
     public IPlatformHandle? TryGetPlatformHandle() => this;
 

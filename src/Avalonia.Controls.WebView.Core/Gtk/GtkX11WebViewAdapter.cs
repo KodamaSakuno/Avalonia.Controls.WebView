@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Threading.Tasks;
 using Avalonia.Media;
 using Avalonia.Platform;
 using static Avalonia.Controls.Gtk.GtkInterop;
@@ -9,28 +10,36 @@ using static Avalonia.Controls.Gtk.X11Interop;
 
 namespace Avalonia.Controls.Gtk;
 
-internal class GtkX11WebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs environmentArgs, IPlatformHandle parent)
-    : GtkWebViewAdapter(environmentArgs), IPlatformHandle
+internal sealed class GtkX11WebViewAdapter : GtkWebViewAdapter, IPlatformHandle
 {
     private static readonly IntPtr s_display = XOpenDisplay(IntPtr.Zero);
 
-    private IntPtr _x11Window;
-    private IntPtr _windowHandle;
+    private readonly IntPtr _x11Window;
+    private readonly IntPtr _windowHandle;
+    private IntPtr _currentParent;
 
-    // GTK thread
-    protected override void InitializeSafe()
+    private GtkX11WebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs environmentArgs) : base(environmentArgs)
     {
         _windowHandle = gtk_window_new(0 /* GTK_WINDOW_TOPLEVEL */);
-        base.InitializeSafe(); // creates WebKitWebView object and subscribes to signals
-
         gtk_container_add(_windowHandle, WebViewHandle);
         gtk_widget_show_all(WebViewHandle);
         gtk_widget_realize(_windowHandle);
         _x11Window = gdk_x11_window_get_xid(gtk_widget_get_window(_windowHandle));
     }
 
-    // Avalonia UI thread
-    protected override void OnInitialized()
+    public static async Task<WebViewAdapter.NativeWebViewAdapterBuilder> CreateBuilder(
+        GtkWebViewEnvironmentRequestedEventArgs environmentArgs)
+    {
+        var adapter = await RunOnGlibThreadAsync(() => new GtkX11WebViewAdapter(environmentArgs));
+        return (parent, _) =>
+        {
+            WebViewDispatcher.CheckAccess();
+            adapter.SetParent(parent);
+            return new WebViewAdapter.AdapterWrapper(adapter, Task.FromResult<IWebViewAdapter>(adapter));
+        };
+    }
+
+    public override void SetParent(IPlatformHandle parent)
     {
         if (parent.HandleDescriptor != "XID")
             throw new InvalidOperationException("Parent is not supported");
@@ -38,15 +47,19 @@ internal class GtkX11WebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs envi
         if (s_display == IntPtr.Zero)
             throw new Exception("XOpenDisplay failed");
 
-        XReparentWindow(s_display, _x11Window, parent.Handle, 0, 0);
-        _ = XFlush(s_display);
-        XSync(s_display, false);
+        if (_currentParent != parent.Handle)
+        {
+            _currentParent = parent.Handle;
 
-        _ = XMapWindow(s_display, _x11Window);
-        _ = XRaiseWindow(s_display, parent.Handle);
+            XReparentWindow(s_display, _x11Window, parent.Handle, 0, 0);
+            _ = XFlush(s_display);
+            XSync(s_display, false);
 
-        RunOnGlibThreadAsync(() => gtk_widget_show_all(_windowHandle));
-        base.OnInitialized();
+            _ = XMapWindow(s_display, _x11Window);
+            _ = XRaiseWindow(s_display, parent.Handle);
+
+            RunOnGlibThreadAsync(() => gtk_widget_show_all(_windowHandle));
+        }
     }
 
     public override Color DefaultBackground

@@ -13,7 +13,7 @@ using static Avalonia.Controls.Gtk.AvaloniaGtk;
 
 namespace Avalonia.Controls.Gtk;
 
-internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatformHandle
+internal abstract class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatformHandle
 {
     private const string PostAvWebViewMessageName = "postAvWebViewMessage";
 
@@ -54,24 +54,93 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     private GtkSignal? _resourceLoadStarted;
     private Uri _source = WebViewHelper.EmptyPage;
 
-    public GtkWebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs environmentArgs)
+    protected GtkWebViewAdapter(GtkWebViewEnvironmentRequestedEventArgs args)
     {
-        EnvironmentArgs = environmentArgs;
-
-        // Blocking initialization of WebView on the GTK thread
-        RunOnGlibThread(InitializeSafe);
-        CompleteInitialization();
-        async void CompleteInitialization()
+        IntPtr context;
+        if (args.EphemeralDataManager
+            || args.BaseDataDirectory is { Length: >0}
+            || args.BaseCacheDirectory is { Length: >0}
+            || !args.SharedProcessModel
+            || args.DisableCache)
         {
-            //Async initialization of signals on the GTK thread, avoids threadlock, if signal calls back too soon. 
-            await RunOnGlibThreadAsync(InitializeSignals);
-            OnInitialized();
+            if (args.EphemeralDataManager)
+            {
+                context = webkit_web_context_new_ephemeral();
+            }
+            else if (args is { BaseDataDirectory.Length: > 0, BaseCacheDirectory.Length: > 0 })
+            {
+                context = webkit_web_context_new_with_website_data_manager(webkit_website_data_manager_new(
+                    "base-data-directory", args.BaseDataDirectory,
+                    "base-cache-directory", args.BaseCacheDirectory,
+                    IntPtr.Zero));
+            }
+            else if (args.BaseDataDirectory is { Length: > 0 })
+            {
+                context = webkit_web_context_new_with_website_data_manager(webkit_website_data_manager_new(
+                    "base-data-directory", args.BaseDataDirectory,
+                    IntPtr.Zero));
+            }
+            else if (args.BaseCacheDirectory is { Length: > 0 })
+            {
+                context = webkit_web_context_new_with_website_data_manager(webkit_website_data_manager_new(
+                    "base-data-directory", args.BaseCacheDirectory,
+                    IntPtr.Zero));
+            }
+            else
+            {
+                context = webkit_web_context_new();
+            }
+
+            if (args.DisableCache)
+            {
+                webkit_web_context_set_cache_model(context, 0 /*WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER*/);
+            }
+            if (!args.SharedProcessModel)
+            {
+                webkit_web_context_set_process_model(context, 1 /*WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES*/);
+            }
         }
+        else
+        {
+            context = webkit_web_context_get_default();
+        }
+
+        WebViewHandle = webkit_web_view_new_with_context(context);
+
+        var contentManager = webkit_web_view_get_user_content_manager(WebViewHandle);
+        _scriptMessageReceivedSignal = new GtkSignal(contentManager, $"script-message-received::{PostAvWebViewMessageName}", s_scriptMessageReceivedCallback, this);
+        webkit_user_content_manager_register_script_message_handler(contentManager, PostAvWebViewMessageName);
+
+        var script = webkit_user_script_new(
+            $$"""
+              function invokeCSharpAction(data)
+              {
+                var message = typeof data === 'object' ? JSON.stringify(data) : data;
+                window.webkit.messageHandlers.{{PostAvWebViewMessageName}}.postMessage(message);
+              }
+              """,
+            0, 0, IntPtr.Zero, IntPtr.Zero);
+        webkit_user_content_manager_add_script(contentManager, script);
+
+        g_object_ref_sink(WebViewHandle);
+
+        var settings = webkit_web_view_get_settings(WebViewHandle);
+        if (args.EnableDevTools)
+        {
+            webkit_settings_set_enable_developer_extras(settings, true);
+        }
+        if (args.ApplicationNameForUserAgent is { Length: > 0 } appUserAgent)
+        {
+            webkit_settings_set_user_agent_with_application_details(settings, appUserAgent, null);
+        }
+
+        _loadChangedSignal = new GtkSignal(WebViewHandle, "load-changed", s_loadChangedCallback, this);
+        _decidePolicySignal = new GtkSignal(WebViewHandle, "decide-policy", s_decidePolicyCallback, this);
+        _focusInSignal = new GtkSignal(WebViewHandle, "focus-in-event", s_focusInCallback, this);
+        _focusOutSignal = new GtkSignal(WebViewHandle, "focus-out-event", s_focusOutCallback, this);
+        _resourceLoadStarted = new GtkSignal(WebViewHandle, "resource-load-started", s_resourceLoadStartedCallback, this);
     }
 
-    internal GtkWebViewEnvironmentRequestedEventArgs EnvironmentArgs { get; }
-
-    public bool IsInitialized { get; private set; }
     public IntPtr WebViewHandle { get; private set; }
 
     IntPtr IPlatformHandle.Handle => WebViewHandle;
@@ -91,8 +160,6 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     public event EventHandler<WebViewNewWindowRequestedEventArgs>? NewWindowRequested;
     public event EventHandler<WebMessageReceivedEventArgs>? WebMessageReceived;
     public event EventHandler<WebResourceRequestedEventArgs>? WebResourceRequested;
-    public event EventHandler? Initialized;
-
     public event EventHandler? GotFocus;
     public event EventHandler<IWebViewAdapterWithFocus.LostFocusDirection>? LostFocus;
 
@@ -169,7 +236,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
         return true;
     }
 
-    public void SetParent(IPlatformHandle parent)
+    public virtual void SetParent(IPlatformHandle parent)
     {
     }
 
@@ -189,102 +256,6 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
 
     public virtual void SizeChanged(PixelSize containerSize)
     {
-    }
-
-    protected virtual void InitializeSafe()
-    {
-        IntPtr context;
-        if (EnvironmentArgs.EphemeralDataManager
-                || EnvironmentArgs.BaseDataDirectory is { Length: >0}
-                 || EnvironmentArgs.BaseCacheDirectory is { Length: >0}
-                 || !EnvironmentArgs.SharedProcessModel
-                 || EnvironmentArgs.DisableCache)
-        {
-            if (EnvironmentArgs.EphemeralDataManager)
-            {
-                context = webkit_web_context_new_ephemeral();
-            }
-            else if (EnvironmentArgs is { BaseDataDirectory.Length: > 0, BaseCacheDirectory.Length: > 0 })
-            {
-                context = webkit_web_context_new_with_website_data_manager(webkit_website_data_manager_new(
-                    "base-data-directory", EnvironmentArgs.BaseDataDirectory,
-                    "base-cache-directory", EnvironmentArgs.BaseCacheDirectory,
-                    IntPtr.Zero));
-            }
-            else if (EnvironmentArgs.BaseDataDirectory is { Length: > 0 })
-            {
-                context = webkit_web_context_new_with_website_data_manager(webkit_website_data_manager_new(
-                    "base-data-directory", EnvironmentArgs.BaseDataDirectory,
-                    IntPtr.Zero));
-            }
-            else if (EnvironmentArgs.BaseCacheDirectory is { Length: > 0 })
-            {
-                context = webkit_web_context_new_with_website_data_manager(webkit_website_data_manager_new(
-                    "base-data-directory", EnvironmentArgs.BaseCacheDirectory,
-                    IntPtr.Zero));
-            }
-            else
-            {
-                context = webkit_web_context_new();
-            }
-
-            if (EnvironmentArgs.DisableCache)
-            {
-                webkit_web_context_set_cache_model(context, 0 /*WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER*/);
-            }
-            if (!EnvironmentArgs.SharedProcessModel)
-            {
-                webkit_web_context_set_process_model(context, 1 /*WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES*/);
-            }
-        }
-        else
-        {
-            context = webkit_web_context_get_default();
-        }
-
-        WebViewHandle = webkit_web_view_new_with_context(context);
-
-        var contentManager = webkit_web_view_get_user_content_manager(WebViewHandle);
-        _scriptMessageReceivedSignal = new GtkSignal(contentManager, $"script-message-received::{PostAvWebViewMessageName}", s_scriptMessageReceivedCallback, this);
-        webkit_user_content_manager_register_script_message_handler(contentManager, PostAvWebViewMessageName);
-
-        var script = webkit_user_script_new(
-            $$"""
-              function invokeCSharpAction(data)
-              {
-                var message = typeof data === 'object' ? JSON.stringify(data) : data;
-                window.webkit.messageHandlers.{{PostAvWebViewMessageName}}.postMessage(message);
-              }
-              """,
-            0, 0, IntPtr.Zero, IntPtr.Zero);
-        webkit_user_content_manager_add_script(contentManager, script);
-
-        g_object_ref_sink(WebViewHandle);
-
-        var settings = webkit_web_view_get_settings(WebViewHandle);
-        if (EnvironmentArgs.EnableDevTools)
-        {
-            webkit_settings_set_enable_developer_extras(settings, true);
-        }
-        if (EnvironmentArgs.ApplicationNameForUserAgent is { Length: > 0 } appUserAgent)
-        {
-            webkit_settings_set_user_agent_with_application_details(settings, appUserAgent, null);
-        }
-    }
-
-    protected virtual void InitializeSignals()
-    {
-        _loadChangedSignal = new GtkSignal(WebViewHandle, "load-changed", s_loadChangedCallback, this);
-        _decidePolicySignal = new GtkSignal(WebViewHandle, "decide-policy", s_decidePolicyCallback, this);
-        _focusInSignal = new GtkSignal(WebViewHandle, "focus-in-event", s_focusInCallback, this);
-        _focusOutSignal = new GtkSignal(WebViewHandle, "focus-out-event", s_focusOutCallback, this);
-        _resourceLoadStarted = new GtkSignal(WebViewHandle, "resource-load-started", s_resourceLoadStartedCallback, this);
-    }
-
-    protected virtual void OnInitialized()
-    {
-        IsInitialized = true;
-        Initialized?.Invoke(this, EventArgs.Empty);
     }
 
     private Uri GetSourceUnsafe()
@@ -316,22 +287,24 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
         {
             // WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION
             case 0:
-                if (GetUrlFromPolicyDecision(decision) is { } urlStr &&
+                if (adapter.NavigationStarted is { } startedHandler &&
+                    GetUrlFromPolicyDecision(decision) is { } urlStr &&
                     Uri.TryCreate(urlStr, UriKind.Absolute, out var url))
                 {
                     var args = new WebViewNavigationStartingEventArgs { Request = url };
-                    WebViewDispatcher.Invoke(() => adapter.NavigationStarted?.Invoke(adapter, args));
+                    WebViewDispatcher.Invoke(() => startedHandler.Invoke(adapter, args));
                     return args.Cancel;
                 }
 
                 return false;
             // WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION
             case 1:
-                if (GetUrlFromPolicyDecision(decision) is { } winUrlStr &&
+                if (adapter.NewWindowRequested is { } windowHandler &&
+                    GetUrlFromPolicyDecision(decision) is { } winUrlStr &&
                     Uri.TryCreate(winUrlStr, UriKind.Absolute, out var winUrl))
                 {
                     var args = new WebViewNewWindowRequestedEventArgs { Request = winUrl };
-                    WebViewDispatcher.Invoke(() => adapter.NewWindowRequested?.Invoke(adapter, args));
+                    WebViewDispatcher.Invoke(() => windowHandler.Invoke(adapter, args));
                     return args.Handled;
                 }
 
@@ -367,7 +340,8 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static void LoadChanged(IntPtr webView, WebKitLoadEvent loadEvent, IntPtr data)
     {
-        if (data == IntPtr.Zero || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter)
+        if (data == IntPtr.Zero || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter
+            || adapter.NavigationCompleted is not { } handler)
         {
             return;
         }
@@ -376,12 +350,8 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
         {
             case WebKitLoadEvent.Committed:
                 adapter._source = adapter.GetSourceUnsafe();
-                WebViewDispatcher.InvokeAsync(() => adapter.NavigationCompleted?
-                    .Invoke(adapter,
-                        new WebViewNavigationCompletedEventArgs
-                        {
-                            IsSuccess = true, Request = adapter._source
-                        }));
+                WebViewDispatcher.InvokeAsync(() => handler.Invoke(adapter,
+                    new WebViewNavigationCompletedEventArgs { IsSuccess = true, Request = adapter._source }));
                 break;
         }
     }
@@ -427,14 +397,15 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static unsafe bool FocusOutCallback(IntPtr widget, GdkEvent* gdkEvent, IntPtr data)
     {
-        if (data == IntPtr.Zero || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter)
+        if (data == IntPtr.Zero || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter
+            || adapter.LostFocus is not { } handler)
         {
             return false;
         }
 
         WebViewDispatcher.InvokeAsync(() =>
         {
-            adapter.LostFocus?.Invoke(adapter, IWebViewAdapterWithFocus.LostFocusDirection.Unknown);
+            handler.Invoke(adapter, IWebViewAdapterWithFocus.LostFocusDirection.Unknown);
         });
         return false;
     }
@@ -442,14 +413,15 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
     private static unsafe bool FocusInCallback(IntPtr widget, GdkEvent* gdkEvent, IntPtr data)
     {
-        if (data == IntPtr.Zero || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter)
+        if (data == IntPtr.Zero || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter
+            || adapter.GotFocus is not { } handler)
         {
             return false;
         }
 
         WebViewDispatcher.InvokeAsync(() =>
         {
-            adapter.GotFocus?.Invoke(adapter, EventArgs.Empty);
+            handler.Invoke(adapter, EventArgs.Empty);
         });
         return false;
     }
@@ -459,7 +431,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     {
         if (data == IntPtr.Zero
             || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter
-            || adapter.WebMessageReceived is null)
+            || adapter.WebMessageReceived is not { } handler)
         {
             return;
         }
@@ -468,8 +440,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
 
         WebViewDispatcher.InvokeAsync(() =>
         {
-            adapter.WebMessageReceived?.Invoke(adapter,
-                new WebMessageReceivedEventArgs { Body = result });
+            handler.Invoke(adapter, new WebMessageReceivedEventArgs { Body = result });
         });
     }
 
@@ -478,7 +449,7 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
     {
         if (data == IntPtr.Zero
             || GCHandle.FromIntPtr(data).Target is not GtkWebViewAdapter adapter
-            || adapter.WebResourceRequested is null)
+            || adapter.WebResourceRequested is not { } handler)
         {
             return;
         }
@@ -507,8 +478,8 @@ internal class GtkWebViewAdapter : IWebViewAdapterWithFocus, IGtkWebViewPlatform
         // DANGEROUS - if user accesses some of the GTK webview APIs inside of this callback, they WILL get deadlock.
         // Because GTK threads is waiting for the sync UI Dispatcher call.
         // While some of the sync webview APIs would wait for the GTK thread to return value (like, get_Url).
-        // TODO: what to do here? Can be replaced with InvokeAsync, but then headers won't be accessible 
-        WebViewDispatcher.Invoke(() => adapter.WebResourceRequested?.Invoke(adapter, args));
+        // TODO: what to do here? Can be replaced with InvokeAsync, but then headers won't be accessible
+        WebViewDispatcher.Invoke(() => handler.Invoke(adapter, args));
 
         headersWrapper.Dispose();
     }

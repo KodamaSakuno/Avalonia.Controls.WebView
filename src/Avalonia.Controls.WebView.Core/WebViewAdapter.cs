@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using Avalonia.Platform;
 
 namespace Avalonia.Controls;
@@ -9,23 +10,31 @@ internal static class WebViewAdapter
 
     public abstract record AdapterFactory;
 
-    public delegate IWebViewAdapter CreateNativeWebViewAdapter(IPlatformHandle parent, Func<IPlatformHandle, IPlatformHandle> createChild);
-    public record NativeHostAdapterFactory(CreateNativeWebViewAdapter Invoke) : AdapterFactory;
+    public record AdapterWrapper(IPlatformHandle AdapterHandle, Task<IWebViewAdapter> AdapterInitializeTask);
+    public delegate AdapterWrapper NativeWebViewAdapterBuilder(IPlatformHandle parent, Func<IPlatformHandle, IPlatformHandle> createChild);
 
-    public delegate IWebViewAdapterWithOffscreenBuffer CreateOffscreenWebViewAdapter(Control parent);
-    public record CompositorHostAdapterFactory(CreateOffscreenWebViewAdapter Invoke) : AdapterFactory;
+    public record NativeHostAdapterFactory(NativeWebViewAdapterBuilder InvokeAsync) : AdapterFactory;
 
-    public static AdapterFactory? CreateFactory(Action<WebViewEnvironmentRequestedEventArgs> environmentRequested)
+    public delegate Task<IWebViewAdapterWithOffscreenBuffer> OffscreenWebViewAdapterBuilder(Control parent);
+    public record CompositorHostAdapterFactory(OffscreenWebViewAdapterBuilder InvokeAsync) : AdapterFactory;
+
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+    public static async Task<AdapterFactory?> CreateFactory(Action<WebViewEnvironmentRequestedEventArgs> environmentRequested)
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
     {
         if (UseHeadless)
         {
             var args = new HeadlessWebViewEnvironmentRequestedEventArgs();
             environmentRequested(args);
+            await Task.Yield();
             // Headless platform doesn't support NativeControlHost yet,
             // But compositor solution kinda works there.
             // Even though it's not production ready part of WebView (compositor/offscreen impl is not enabled by default).
-            return new CompositorHostAdapterFactory(_ =>
-                new Headless.HeadlessWebViewAdapter(args));
+            return new CompositorHostAdapterFactory(async _ =>
+            {
+                await Task.Yield();
+                return new Headless.HeadlessWebViewAdapter(args);
+            });
         }
 
 #if ANDROID // Android is the only backend which conditionally compiled, the rest is always present and loaded in runtime
@@ -34,7 +43,11 @@ internal static class WebViewAdapter
         {
             var args = new AndroidWebViewEnvironmentRequestedEventArgs();
             environmentRequested(args);
-            return new NativeHostAdapterFactory((parent, _) => new Android.AndroidWebViewAdapter(parent, args));
+            return new NativeHostAdapterFactory((parent, _) =>
+            {
+                IWebViewAdapter adapter = new Android.AndroidWebViewAdapter(parent, args);
+                return new AdapterWrapper(adapter, Task.FromResult(adapter));
+            });
         }
 #else
         if (OperatingSystemEx.IsMacOS() || OperatingSystemEx.IsIOS())
@@ -46,7 +59,10 @@ internal static class WebViewAdapter
                 // NOTE: we add double platform condition here to shut up Roslyn Analyzer false positives.
                 // If you are from the future, please check if it's still the case.
                 if (OperatingSystemEx.IsMacOS() || OperatingSystemEx.IsIOS())
-                    return new Macios.MaciosWebViewAdapter(args);
+                {
+                    IWebViewAdapter adapter = new Macios.MaciosWebViewAdapter(args);
+                    return new AdapterWrapper(adapter, Task.FromResult(adapter));
+                }
                 throw new PlatformNotSupportedException();
             });
         }
@@ -60,12 +76,8 @@ internal static class WebViewAdapter
                     && Win.WebView2.CoreWebView2Environment.TryFindWebView2Runtime(args.BrowserExecutableFolder) !=
                     IntPtr.Zero)
                 {
-                    return new NativeHostAdapterFactory((parent, createChild) =>
-                    {
-                        if (OperatingSystemEx.IsWindows())
-                            return new Win.WebView2.WebView2HwndAdapter(parent, createChild(parent), args);
-                        throw new PlatformNotSupportedException();
-                    });
+                    var builder = await Win.WebView2.WebView2HwndAdapter.CreateBuilder(args);
+                    return new NativeHostAdapterFactory(builder);
                 }
             }
             {
@@ -73,12 +85,8 @@ internal static class WebViewAdapter
                 environmentRequested(args);
                 if (Win.WebView1.WebView1Process.GetOrCreateProcess(args) is { } process)
                 {
-                    return new NativeHostAdapterFactory((parent, createChild) =>
-                    {
-                        if (OperatingSystemEx.IsWindows())
-                            return new Win.WebView1.WebView1Adapter(parent, createChild(parent), process);
-                        throw new PlatformNotSupportedException();
-                    });
+                    var builder = await Win.WebView1.WebView1Adapter.CreateBuilder(process);
+                    return new NativeHostAdapterFactory(builder);
                 }
             }
         }
@@ -89,11 +97,14 @@ internal static class WebViewAdapter
             environmentRequested(args);
             if (args.ExperimentalOffscreen)
             {
-                return new CompositorHostAdapterFactory(parent =>
-                    new Gtk.GtkOffscreenAvaloniaWebViewAdapter(args, parent));
+                var builder = await Gtk.GtkOffscreenAvaloniaWebViewAdapter.CreateBuilder(args);
+                return new CompositorHostAdapterFactory(builder);
             }
-
-            return new NativeHostAdapterFactory((parent, _) => new Gtk.GtkX11WebViewAdapter(args, parent));
+            else
+            {
+                var builder = await Gtk.GtkX11WebViewAdapter.CreateBuilder(args);
+                return new NativeHostAdapterFactory(builder);
+            }
         }
 
         // if (OperatingSystemEx.IsBrowser())
