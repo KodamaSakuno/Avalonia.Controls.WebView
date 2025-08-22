@@ -175,13 +175,12 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
         controller.SetParentWindow(parent.Handle);
     }
 
-    public bool Focus()
+    public void Focus()
     {
         controller.MoveFocus(0 /* Programmatic */);
-        return true;
     }
 
-    public bool ResignFocus() => false;
+    public void ResignFocus() { }
 
     internal EventHandler<WebViewNavigationStartingEventArgs>? GetNavigationStarted() => NavigationStarted;
     internal EventHandler<WebViewNavigationCompletedEventArgs>? GetNavigationCompleted() => NavigationCompleted;

@@ -202,9 +202,15 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
         // macOS control don't need to be explicitly parented
     }
 
-    public bool Focus() => OperatingSystemEx.IsMacOS() && _webView.MakeFirstResponder();
+    public void Focus()
+    {
+        if (OperatingSystemEx.IsMacOS()) _webView.MakeFirstResponder();
+    }
 
-    public bool ResignFocus() => OperatingSystemEx.IsMacOS() && _webView.RemoveFirstResponder();
+    public void ResignFocus()
+    {
+        if (OperatingSystemEx.IsMacOS()) _webView.RemoveFirstResponder();
+    }
 
     private async void OnScriptHandlerOnDidReceiveScriptMessage(object? sender, WKScriptMessageHandler.ScriptMessageEventArgs args)
     {

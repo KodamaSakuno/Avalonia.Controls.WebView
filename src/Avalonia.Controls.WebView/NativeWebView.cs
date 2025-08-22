@@ -657,7 +657,7 @@ namespace Avalonia.Xpf.Controls
             if (!_ignoreFocusChanges
                 && TryGetAdapter() is Core.IWebViewAdapterWithFocus adapterWithFocus)
             {
-                _ = adapterWithFocus.Focus();
+                adapterWithFocus.Focus();
             }
         }
 
@@ -671,7 +671,7 @@ namespace Avalonia.Xpf.Controls
             if (!_ignoreFocusChanges
                 && TryGetAdapter() is Core.IWebViewAdapterWithFocus adapterWithFocus)
             {
-                _ = adapterWithFocus.ResignFocus();
+                adapterWithFocus.ResignFocus();
             }
         }
 #endif

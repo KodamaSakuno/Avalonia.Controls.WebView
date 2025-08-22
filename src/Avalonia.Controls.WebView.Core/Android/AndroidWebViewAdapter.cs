@@ -180,15 +180,14 @@ internal class AndroidWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapter
         _webView.Dispose();
     }
 
-    public bool Focus()
+    public void Focus()
     {
-        return _webView.RequestFocus();
+        _ = _webView.RequestFocus();
     }
 
-    public bool ResignFocus()
+    public void ResignFocus()
     {
         _webView.ClearFocus();
-        return true;
     }
 
     public void AddOrUpdateCookie(Cookie cookie)
