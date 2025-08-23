@@ -43,7 +43,6 @@ internal partial class HeadlessWebViewAdapter : IWebViewAdapterWithOffscreenBuff
     public event EventHandler<WebViewNewWindowRequestedEventArgs>? NewWindowRequested;
     public event EventHandler<WebMessageReceivedEventArgs>? WebMessageReceived;
     public event EventHandler<WebResourceRequestedEventArgs>? WebResourceRequested;
-    public event EventHandler? Initialized;
 
     public bool CanGoBack => _historyIndex > 0;
     public bool CanGoForward => _historyIndex >= 0 && _historyIndex < _history.Count - 1;
@@ -53,8 +52,6 @@ internal partial class HeadlessWebViewAdapter : IWebViewAdapterWithOffscreenBuff
         get => GetCurrentPage()?.Uri ?? WebViewHelper.EmptyPage;
         set => Navigate(value);
     }
-
-    public bool IsInitialized { get; private set; }
 
     public IntPtr Handle { get; } = new(Interlocked.Increment(ref s_headlessHandleCounted));
     public string HandleDescriptor => "HeadlessWebViewAdapter";

@@ -92,8 +92,6 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
 
     public IntPtr Handle { get; }
     public string HandleDescriptor => OperatingSystemEx.IsMacOS() ? "NSView" : "UIView";
-    public bool IsInitialized => true;
-    public event EventHandler? Initialized;
 
     public bool CanGoBack => _webView.CanGoBack;
     public bool CanGoForward => _webView.CanGoForward;
