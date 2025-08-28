@@ -9,14 +9,14 @@
     <AssemblyName>XpfIntegrationTests</AssemblyName>
     <DefineConstants>$(DefineConstants);WPF</DefineConstants>
     <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <AvaloniaXpfLicenseKey>$(XpfLicenseKey)</AvaloniaXpfLicenseKey>
     <DisableAutomaticXpfInit>true</DisableAutomaticXpfInit>
+    <AvaloniaXpfLicenseKey>avln_online_key_649b8dc105734fac838810e84e508f2b</AvaloniaXpfLicenseKey>
   </PropertyGroup>
 
   <ItemGroup>
-<!--    <PackageReference Include="Avalonia.Xpf.Controls.WebView" Version="9999.0.0-localbuild" />-->
-    <ProjectReference Include="..\..\src\Avalonia.Xpf.Controls.WebView\Avalonia.Xpf.Controls.WebView.csproj" />
-    <ProjectReference Include="..\..\src\Avalonia.Controls.WebView.Core\Avalonia.Controls.WebView.Core.csproj" />
+    <PackageReference Include="Avalonia.Xpf.Controls.WebView" Version="9999.0.0-localbuild" />
+<!--    <ProjectReference Include="..\..\src\Avalonia.Xpf.Controls.WebView\Avalonia.Xpf.Controls.WebView.csproj" />-->
+<!--    <ProjectReference Include="..\..\src\Avalonia.Controls.WebView.Core\Avalonia.Controls.WebView.Core.csproj" />-->
     <PackageReference Include="Avalonia.Diagnostics" Version="$(XpfAvaloniaVersion)"/>
   </ItemGroup>
 

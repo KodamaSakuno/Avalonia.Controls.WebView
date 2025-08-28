@@ -30,12 +30,12 @@ public class XpfAvaloniaInitializer
                 })
                 .With(new X11PlatformOptions
                 {
-                    UseGLibMainLoop = false,
-                    ExterinalGLibMainLoopExceptionLogger = e =>
-                    {
-                        Debug.WriteLine(e.ToString());
-                        Debugger.Break();
-                    } 
+                    // UseGLibMainLoop = false,
+                    // ExterinalGLibMainLoopExceptionLogger = e =>
+                    // {
+                    //     Debug.WriteLine(e.ToString());
+                    //     Debugger.Break();
+                    // }
                 })
                 .WithAvaloniaXpf()
                 .SetupWithClassicDesktopLifetime(

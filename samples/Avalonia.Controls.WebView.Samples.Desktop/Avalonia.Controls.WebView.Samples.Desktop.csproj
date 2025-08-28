@@ -18,6 +18,6 @@
     <ProjectReference Include="..\Avalonia.Controls.WebView.Samples\Avalonia.Controls.WebView.Samples.csproj" />
   </ItemGroup>
 
-  <Import Project="$(RepositoryPropsRoot)/NullableEnable.targets" />
-  <Import Project="$(RepositoryPropsRoot)/TrimmingEnable.targets" />
+  <Import Project="$(RepositoryTargetsRoot)/NullableEnable.targets" />
+  <Import Project="$(RepositoryTargetsRoot)/TrimmingEnable.targets" />
 </Project>

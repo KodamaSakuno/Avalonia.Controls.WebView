@@ -14,6 +14,7 @@ using Nuke.Common.IO;
 using Nuke.Common.Tooling;
 using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Tools.PowerShell;
+using NukeExtensions;
 using Semver;
 using Serilog;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
@@ -32,47 +33,34 @@ class Build : NukeBuild
     readonly Configuration Configuration = Configuration.Release;
     [Parameter]
     readonly AbsolutePath Output = RootDirectory / "artifacts" / "packages";
-    [Parameter]
-    readonly string? VersionOverride;
+
+    readonly AbsolutePath SolutionFile = RootDirectory / "Avalonia.Controls.WebView.ci.slnf";
 
     Target OutputParameters => _ => _
         .Executes(() =>
         {
-            Log.Information($"Configuration: {Configuration}");
-            Log.Information($"Output: {Output}");
-            Log.Information($"Version: {GetVersion()}");
+            Log.Information("Configuration: {Configuration}", Configuration);
+            Log.Information("Output: {AbsolutePath}", Output);
+            Log.Information("Version: {GetVersion}", GetVersion());
         });
 
     Target Compile => _ => _
         .DependsOn(OutputParameters)
-        .Executes(() =>
-        {
-            foreach (var srcProject in (RootDirectory / "src").GlobFiles("**/*.csproj"))
-            {
-                DotNetBuild(c => c
-                    .SetProjectFile(srcProject)
-                    .SetVerbosity(DotNetVerbosity.minimal)
-                    .AddProperty("PackageVersion", GetVersion())
-                    .AddProperty("ILMergeBuild", true)
-                    .SetVersion(GetVersion())
-                    .SetConfiguration(Configuration)
-                );
-            }
-        });
+        .DependsOn(RunTests)
+        .Executes(() => DotNetBuild(c => c
+            .SetProjectFile(SolutionFile)
+            .SetVersion(GetVersion())
+            .AddProperty("ILMergeBuild", true)
+            .SetConfiguration(Configuration)
+        ));
 
     Target RunTests => _ => _
         .DependsOn(OutputParameters)
-        .Executes(() =>
-        {
-            foreach (var srcProject in (RootDirectory / "tests").GlobFiles("**/*.csproj"))
-            {
-                DotNetTest(c => c
-                    .SetProjectFile(srcProject)
-                    .SetVerbosity(DotNetVerbosity.minimal)
-                    .SetConfiguration(Configuration)
-                );
-            }
-        });
+        .Executes(() => DotNetTest(c => c
+            .SetProjectFile(SolutionFile)
+            .SetVerbosity(DotNetVerbosity.minimal)
+            .SetConfiguration(Configuration)
+        ));
 
     Target IlMerge => _ => _
         .DependsOn(Compile)
@@ -100,7 +88,7 @@ class Build : NukeBuild
                         .Where(f => Array.IndexOf(depNamesToMerge, f.Name) >= 0);
 
                     var dependenciesArg = string.Join(" ", dependenciesToMerge.Select(dll => '"' + dll + '"'));
-                    var signParams = $"/keyfile:{RootDirectory / "build" / "avalonia.snk"}";
+                    var signParams = $"/keyfile:{Statics.AvaloniaStrongNameKey}";
 
                     IlRepackTool.Invoke(
                         $"""/internalize:{coreProjectPublicApi} /renameinternalized /parallel /ndebug {libs:nq} {signParams} /out:"{mergeRootDll}" "{mergeRootDll}" {dependenciesArg} """,
@@ -119,60 +107,20 @@ class Build : NukeBuild
                 "Avalonia.Controls.WebView",
                 "Avalonia.Xpf.Controls.WebView"
             ];
-            var licenseEnvValue = Environment.GetEnvironmentVariable("BABEL_LICENSE");
-            AbsolutePath licenseFile;
-            bool tempLicense = false;
-            if (File.Exists(licenseEnvValue))
+            foreach (var project in (RootDirectory / "src").GlobFiles("**/*.csproj")
+                     .Where(p => projectsToObfuscate.Contains(p.NameWithoutExtension)))
             {
-                licenseFile = licenseEnvValue;
-            }
-            else if (!string.IsNullOrWhiteSpace(licenseEnvValue))
-            {
-                licenseFile = TemporaryDirectory / "babel.license";
-                File.WriteAllText(licenseFile, licenseEnvValue);
-                tempLicense = true;
-            }
-            else
-            {
-                if (IsLocalBuild)
-                {
-                    licenseFile = null;
-                    Log.Warning("LocalBuild obfuscation is skipped - no license key was set via BABEL_LICENSE env");
-                }
-                else
-                {
-                    throw new Exception("Babel license is missing");
-                }
-            }
-
-            try
-            {
-                foreach (var projectName in projectsToObfuscate)
-                {
-                    Log.Information("Obfuscating {Project}", projectName);
-
-                    var projectRoot = RootDirectory / "src" / projectName;
-                    var obfuscationMapFile = RootDirectory / "Obfuscated" / (projectName + ".ObfuscationMap.xml");
-                    var obfuscationLogFile = RootDirectory / "Obfuscated" / (projectName + ".Obfuscation.log");
-                    var rules = RootDirectory / "build" / "Babel.rules";
-                    var signKey = RootDirectory / "build" / "avalonia.snk";
-
-                    foreach (var buildOutput in (projectRoot / "bin" / Configuration).GlobDirectories("net*"))
-                    {
-                        var dllFile = buildOutput / (projectName + ".dll");
-
-                        Babel(
-                            $"{dllFile} --nologo --license {licenseFile} --rules {rules} --keyfile {signKey} --output {dllFile}  --mapout {obfuscationMapFile} --logfile {obfuscationLogFile}",
-                            RootDirectory);
-                    }
-                }
-            }
-            finally
-            {
-                if (tempLicense)
-                {
-                    licenseFile.DeleteFile();
-                }
+                var tfms = (project.Parent / "bin" / Configuration).GetDirectories();
+                NukeExtensions.Babel.Obfuscate(
+                    Babel,
+                    assemblyName: project.NameWithoutExtension,
+                    targets: tfms.Select(tfm => new Babel.ObfuscationTargetFramework(tfm, [])),
+                    signKey: Statics.AvaloniaStrongNameKey,
+                    licenseFile: Statics.BabelLicense,
+                    rulesFiles: [
+                        Statics.BabelRules,
+                        RootDirectory / "build" / "BabelWebView.rules"
+                    ]);
             }
         });
 
@@ -201,76 +149,17 @@ class Build : NukeBuild
 
     Target CopyPackagesToNuGetCache => _ => _
         .DependsOn(CreateNugetPackages)
-        .Executes(() =>
-        {
-            var globalPackagesFolder = SettingsUtility.GetGlobalPackagesFolder(
-                Settings.LoadDefaultSettings(RootDirectory));
+        .Executes(() => NugetCache.InstallLibraryToNuGetCache(
+            Output.GlobFiles("*.nupkg"),
+            RootDirectory,
+            GetVersion()));
 
-            var packageFiles = Output.GlobFiles("*.nupkg");
-            if (packageFiles.Count == 0)
-            {
-                throw new InvalidOperationException("No nupkg files were found.");
-            }
-
-            foreach (var path in packageFiles)
-            {
-                using var f = File.Open(path.ToString(), FileMode.Open, FileAccess.Read);
-                using var zip = new ZipArchive(f, ZipArchiveMode.Read);
-                var nuspecEntry = zip.Entries.First(e => e.FullName.EndsWith(".nuspec") && e.FullName == e.Name);
-                var packageId = XDocument.Load(nuspecEntry.Open()).Document!.Root!
-                    .Elements().First(x => x.Name.LocalName == "metadata")
-                    .Elements().First(x => x.Name.LocalName == "id").Value;
-
-                var packagePath = Path.Combine(
-                    globalPackagesFolder,
-                    packageId.ToLowerInvariant(),
-                    GetVersion());
-
-                if (Directory.Exists(packagePath))
-                    Directory.Delete(packagePath, true);
-                Directory.CreateDirectory(packagePath);
-                zip.ExtractToDirectory(packagePath);
-                File.WriteAllText(Path.Combine(packagePath, ".nupkg.metadata"), @"{
-  ""version"": 2,
-  ""contentHash"": ""FnIKqnvWIoQ+6ZZcVGX0dZyFA9A5GaRFTfTK+bj3coj0Eb528+4GADTMTIb2pmx/lpi79ZXJAln1A+Lyr+i6Vw=="",
-  ""source"": ""https://api.nuget.org/v3/index.json""
-}");
-                Log.Information("Package path is " + packagePath);
-            }
-        });
-
-    string GetVersion()
-    {
-        // VersionOverride
-        if (VersionOverride is { } version)
-        {
-            return version;
-        }
-
-        var refName =  Environment.GetEnvironmentVariable("GITHUB_REF_NAME");
-        // Release tag
-        if (SemVersion.TryParse(refName, out var tagVersion))
-        {
-            return tagVersion.ToString();
-        }
-        // Release branch
-        else if (SemVersion.TryParse(refName?.Replace("release/", "") ?? "", out var releaseVersion))
-        {
-            return releaseVersion.ToString();
-        }
-        // CI build number
-        else if (int.TryParse(Environment.GetEnvironmentVariable("GITHUB_RUN_NUMBER"), out var ciRun))
-        {
-            return "1.0.999-cibuild" + ciRun.ToString("0000000") + "-alpha";
-        }
-
-        if (RunningTargets.Concat(ScheduledTargets).Any(t => t.Name == nameof(CopyPackagesToNuGetCache)))
-        {
-            return "9999.0.0-localbuild";
-        }
-
-        return "1.0.999-localbuild-alpha";
-    }
+    string GetVersion() => VersionResolver
+        .GetGitHubVersion(
+            baseVersionNumber: new Version(11, 3, 999),
+            isPackingToLocalCache: RunningTargets.Concat(ScheduledTargets)
+                .Any(t => t.Name == nameof(CopyPackagesToNuGetCache)))
+        .ToString();
 
     static IEnumerable<string> GetExtraDepLibs()
     {
