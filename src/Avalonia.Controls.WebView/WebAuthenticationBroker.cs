@@ -6,6 +6,7 @@ using Core = Avalonia.Controls;
 using AvaloniaUI.Xpf.WpfAbstractions;
 using Avalonia.Controls;
 #elif AVALONIA
+using AvaloniaUI.Licensing;
 using AvTopLevel = Avalonia.Controls.TopLevel;
 #endif
 
@@ -20,6 +21,16 @@ namespace Avalonia.Xpf.Controls
     /// </summary>
     public static class WebAuthenticationBroker
     {
+        static WebAuthenticationBroker()
+        {
+            // XPF customers don't need a special license to use XPF controls.
+#if !WPF
+            AvaloniaLicenseInformation.LoadAndValidateLibrary(
+                AvaloniaLicenseProduct.WebView.Name!,
+                buildTime: DateTimeOffset.FromUnixTimeSeconds(AvnLicensingConstants.BuildTimeUnixTimestamp));
+#endif
+        }
+
         /// <summary>
         /// Starts an authentication flow by navigating to the specified start URI and monitoring for navigation to the end URI.
         /// </summary>
@@ -32,10 +43,6 @@ namespace Avalonia.Xpf.Controls
             (AvTopLevel topLevel, WebAuthenticatorOptions options)
 #endif
         {
-#if !WPF
-            Licensing.ValidateWebView();
-#endif
-
             var supportsNativeWebDialog =
                 OperatingSystemEx.IsWindows() || OperatingSystemEx.IsLinux() || OperatingSystemEx.IsMacOS() ||
                 OperatingSystemEx.IsAndroid();

@@ -10,6 +10,7 @@ using AvaloniaUI.Xpf.WpfAbstractions;
 using Window = System.Windows.Window;
 #elif AVALONIA
 using Window = Avalonia.Controls.Window;
+using AvaloniaUI.Licensing;
 #endif
 
 #if AVALONIA
@@ -41,16 +42,15 @@ namespace Avalonia.Xpf.Controls
 
         static NativeWebDialog()
         {
-#if WPF
-            WpfWebViewDispatcher.Setup();
-#endif
-        }
-        
-        public NativeWebDialog()
-        {
             // XPF customers don't need a special license to use XPF controls.
 #if !WPF
-            Core.Licensing.ValidateWebView();
+            AvaloniaLicenseInformation.LoadAndValidateLibrary(
+                AvaloniaLicenseProduct.WebView.Name!,
+                buildTime: DateTimeOffset.FromUnixTimeSeconds(AvnLicensingConstants.BuildTimeUnixTimestamp));
+#endif
+
+#if WPF
+            WpfWebViewDispatcher.Setup();
 #endif
         }
 

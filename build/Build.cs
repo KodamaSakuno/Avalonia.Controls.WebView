@@ -81,7 +81,8 @@ class Build : NukeBuild
                     rulesFiles: [
                         Statics.BabelRules,
                         RootDirectory / "build" / "BabelWebView.rules"
-                    ]);
+                    ],
+                    inlineExpansion: true);
             }
         });
 
