@@ -10,6 +10,7 @@
     <CopyLocalLockFileAssemblies Condition="'$(ILMergeBuild)' == 'true'">true</CopyLocalLockFileAssemblies>
     <AndroidGenerateResourceDesigner>false</AndroidGenerateResourceDesigner>
     <AvnLicensingEmitBuildTime>true</AvnLicensingEmitBuildTime>
+    <PackageReleaseNotes>$([System.IO.File]::ReadAllText("$(MSBuildProjectDirectory)/CHANGELOG.md"))</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -25,4 +26,5 @@
   <Import Project="$(RepositoryTargetsRoot)/PackEnable.targets" />
   <Import Project="$(RepositoryTargetsRoot)/SignEnable.targets" />
 </Project>
+
 
