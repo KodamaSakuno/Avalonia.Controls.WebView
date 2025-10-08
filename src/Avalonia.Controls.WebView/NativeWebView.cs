@@ -1,6 +1,9 @@
 ﻿#if AVALONIA || WPF
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
 using AvInput = Avalonia.Input;
@@ -271,6 +274,21 @@ namespace Avalonia.Xpf.Controls
         /// <inheritdoc/>
         public Core.NativeWebViewCookieManager? TryGetCookieManager() =>
             TryGetAdapter() is Core.IWebViewAdapterWithCookieManager adapter ? new(adapter) : null;
+
+        /// <inheritdoc/>
+        public void ShowPrintUI()
+        {
+            if (TryGetAdapter() is not Core.IWebViewWithPrint adapter
+                || !adapter.ShowPrintUI())
+            {
+                InvokeScript("window.print();");
+            }
+        }
+
+        /// <inheritdoc/>
+        public Task<Stream> PrintToPdfStreamAsync() => TryGetAdapter() is Core.IWebViewWithPrint adapter ?
+            adapter.PrintToPdfStreamAsync() :
+            Task.FromException<Stream>(new PlatformNotSupportedException());
 
         /// <inheritdoc/>
         public bool CanGoBack => TryGetAdapter()?.CanGoBack ?? false;

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
@@ -15,7 +16,7 @@ namespace Avalonia.Controls.Win.WebView2;
 
 [SupportedOSPlatform("windows6.1")] // win7
 internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller controller)
-    : IWebViewAdapterWithCookieManager, IWebViewAdapterWithFocus, IWindowsWebView2PlatformHandle
+    : IWebViewAdapterWithCookieManager, IWebViewAdapterWithFocus, IWindowsWebView2PlatformHandle, IWebViewWithPrint
 {
     private EventHandler<WebResourceRequestedEventArgs>? _webResourceRequested;
     private Action? _subscriptions;
@@ -173,6 +174,43 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
             throw new InvalidOperationException("IPlatformHandle.HandleDescriptor must be HWND");
 
         controller.SetParentWindow(parent.Handle);
+    }
+
+    public bool ShowPrintUI()
+    {
+        if (TryGetWebView2() is not { } webView)
+        {
+            throw new InvalidOperationException("WebView Adapter is not initialized");
+        }
+
+        if (TryGetWebView2() is not ICoreWebView2_16 webView16)
+        {
+            return false;
+        }
+
+        webView16.ShowPrintUI(0);
+        return true;
+    }
+
+    public Task<Stream> PrintToPdfStreamAsync()
+    {
+        if (TryGetWebView2() is not ICoreWebView2_16 webView)
+        {
+            return Task.FromException<Stream>(new InvalidOperationException("WebView Adapter is not initialized"));
+        }
+
+        var printSettings = ((ICoreWebView2Environment6)webView.Environment()).CreatePrintSettings();
+        // remove margins to match GTK and Apple implementations
+        printSettings.put_MarginLeft(0);
+        printSettings.put_MarginRight(0);
+        printSettings.put_MarginTop(0);
+        printSettings.put_MarginBottom(0);
+        printSettings.put_ShouldPrintHeaderAndFooter(false);
+        // printSettings.put_ShouldPrintBackgrounds(false);
+
+        var handler = new WebView2PrintToPdfStreamCompletedHandler();
+        webView.PrintToPdfStream(printSettings, handler);
+        return handler.Result.Task;
     }
 
     public void Focus()
