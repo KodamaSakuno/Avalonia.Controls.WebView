@@ -6,6 +6,11 @@ on:
     tags:
       - '*'
   workflow_dispatch: # manual trigger for stable release
+      nuget:
+          description: 'Push NuGet'
+          required: true
+          type: boolean
+          default: false
 
 jobs:
 
@@ -81,6 +86,7 @@ jobs:
         path: ./nupkgs
 
     - name: Publish XPF release
+      if: ${{ inputs.nuget }}
       run: dotnet nuget push ./nupkgs/**/*.nupkg --api-key ${{secrets.INTERNAL_FEED_API_KEY}} --source ${{ vars.INTERNAL_FEED_UPLOAD_URL }}
       #run: dotnet nuget push ./nupkgs/**/*.nupkg  --api-key ${{secrets.baget_api_key}} --source ${{ vars.BAGET_API_URL }}
 
@@ -106,6 +112,7 @@ jobs:
         path: ./nupkgs
 
     - name: Publish release
+      if: ${{ inputs.nuget }}
       run: dotnet nuget push ./nupkgs/**/*.nupkg --api-key ${{secrets.INTERNAL_FEED_API_KEY}} --source ${{ vars.INTERNAL_FEED_UPLOAD_URL }}
       #run: dotnet nuget push ./nupkgs/**/*.nupkg --api-key ${{secrets.NUGET_FEED_API_KEY}} --source https://api.nuget.org/v3/index.json
 
