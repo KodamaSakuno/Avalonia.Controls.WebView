@@ -5,6 +5,7 @@ on:
     branches: [ "main", "release/*" ]
     tags:
       - '*'
+  workflow_dispatch: # manual trigger for stable release
 
 jobs:
 
@@ -42,7 +43,7 @@ jobs:
   publish-nightly-release:
     runs-on: [self-hosted, Linux]
     needs: build
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
 
       - uses: actions/download-artifact@v4
@@ -65,8 +66,14 @@ jobs:
   publish-xpf-release:
     runs-on: [self-hosted, Linux]
     needs: build
-    if: startsWith(github.ref, 'refs/heads/release/')
+    if: github.event_name == 'workflow_dispatch'
     steps:
+
+    - name: Check branch validity
+      if: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+      run: |
+          echo "Error: stable_release can only be run on 'release/*' branches."
+          exit 1
 
     - uses: actions/download-artifact@v4
       with:
@@ -74,7 +81,8 @@ jobs:
         path: ./nupkgs
 
     - name: Publish XPF release
-      run: dotnet nuget push ./nupkgs/**/*.nupkg  --api-key ${{secrets.baget_api_key}} --source ${{ vars.BAGET_API_URL }}
+      run: dotnet nuget push ./nupkgs/**/*.nupkg --api-key ${{secrets.INTERNAL_FEED_API_KEY}} --source ${{ vars.INTERNAL_FEED_UPLOAD_URL }}
+      #run: dotnet nuget push ./nupkgs/**/*.nupkg  --api-key ${{secrets.baget_api_key}} --source ${{ vars.BAGET_API_URL }}
 
     - name: Clean packages
       if: always()
@@ -83,8 +91,14 @@ jobs:
   publish-accelerate-release:
     runs-on: [self-hosted, Linux]
     needs: build
-    if: startsWith(github.ref, 'refs/heads/release/')
+    if: github.event_name == 'workflow_dispatch'
     steps:
+
+    - name: Check branch validity
+      if: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+      run: |
+          echo "Error: stable_release can only be run on 'release/*' branches."
+          exit 1
 
     - uses: actions/download-artifact@v4
       with:
@@ -92,7 +106,8 @@ jobs:
         path: ./nupkgs
 
     - name: Publish release
-      run: dotnet nuget push ./nupkgs/**/*.nupkg --api-key ${{secrets.NUGET_FEED_API_KEY}} --source https://api.nuget.org/v3/index.json
+      run: dotnet nuget push ./nupkgs/**/*.nupkg --api-key ${{secrets.INTERNAL_FEED_API_KEY}} --source ${{ vars.INTERNAL_FEED_UPLOAD_URL }}
+      #run: dotnet nuget push ./nupkgs/**/*.nupkg --api-key ${{secrets.NUGET_FEED_API_KEY}} --source https://api.nuget.org/v3/index.json
 
     - name: Clean packages
       if: always()
