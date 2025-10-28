@@ -154,6 +154,16 @@ internal sealed class GtkNativeWebViewDialog : INativeWebViewDialog, IGtkWebView
 
     public void Close()
     {
+        // Closing is invoked in two places for the GTK webview:
+        // 1. Here, on explicit Close call. We notify about Closing before even sending close request to the GTK.
+        // 2. In the `DeleteEvent` handler, which is raised when GTK window is being closed.
+        // If GTK window was closed due to window dispose (like in Close call), it would be too late for any cancellation
+        // So we raise this event here early.
+        var cancel = new CancelEventArgs();
+        Closing?.Invoke(this, cancel);
+        if (cancel.Cancel)
+            return;
+
         Dispose(true);
     }
 
