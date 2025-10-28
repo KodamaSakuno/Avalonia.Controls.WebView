@@ -1,3 +1,8 @@
+# 11.3.13
+
+- Improves Mono AOT compatibility, removing warnings
+- Fixes GTK NativeWebDialog.Canceling event not being raised 
+
 # 11.3.11
 
 - First public NuGet release!
