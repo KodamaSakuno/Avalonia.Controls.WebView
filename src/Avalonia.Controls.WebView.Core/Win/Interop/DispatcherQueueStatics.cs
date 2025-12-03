@@ -43,28 +43,28 @@ internal static partial class DispatcherQueueStatics
 
 #if NET7_0_OR_GREATER
     [LibraryImport("coremessaging.dll")]
-    public static partial void CreateDispatcherQueueController(DispatcherQueueOptions options,
+    private static partial void CreateDispatcherQueueController(DispatcherQueueOptions options,
         out IDispatcherQueueController dispatcherQueueController);
 #else
     [DllImport("coremessaging.dll")]
-    public static extern void CreateDispatcherQueueController(DispatcherQueueOptions options, out IDispatcherQueueController dispatcherQueueController);
+    private static extern void CreateDispatcherQueueController(DispatcherQueueOptions options, out IDispatcherQueueController dispatcherQueueController);
 #endif
 
-    internal enum DISPATCHERQUEUE_THREAD_APARTMENTTYPE
+    private enum DISPATCHERQUEUE_THREAD_APARTMENTTYPE
     {
         DQTAT_COM_NONE,
         DQTAT_COM_ASTA,
         DQTAT_COM_STA
     }
 
-    internal enum DISPATCHERQUEUE_THREAD_TYPE
+    private enum DISPATCHERQUEUE_THREAD_TYPE
     {
         DQTYPE_THREAD_DEDICATED = 1,
         DQTYPE_THREAD_CURRENT
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    internal struct DispatcherQueueOptions
+    private struct DispatcherQueueOptions
     {
         public int dwSize;
         [MarshalAs(UnmanagedType.I4)] public DISPATCHERQUEUE_THREAD_TYPE threadType;

@@ -3,6 +3,7 @@ using System.Runtime.InteropServices.Marshalling;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using Avalonia.Controls.Rendering;
+using Avalonia.Controls.Win.Interop;
 using Avalonia.Controls.Win.WebView2.Interop;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
@@ -53,8 +54,17 @@ internal partial class WebView2CompAdapter(ICoreWebView2CompositionController co
             }
 
             var controller = await handler.Result.Task;
+
+            var dispatcherQueue = DispatcherQueueStatics.GetOrCreateOnCurrentThread();
+            var compositor = NativeWinRTMethods.CreateInstance<ICompositor>("Windows.UI.Composition.Compositor")
+                ?? throw new InvalidOperationException("Failed to create Compositor instance.");
+            var compositionVisual = compositor.CreateContainerVisual();
+            
+            controller.SetRootVisualTarget(compositionVisual);
+            
             var webView = new WebView2CompAdapter(controller);
             await webView.InitializeAsync(environmentArgs);
+            
             return webView;
         };
     }

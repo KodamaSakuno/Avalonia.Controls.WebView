@@ -2,6 +2,8 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
+using Avalonia.Controls.Win.Interop;
+
 // ReSharper disable InconsistentNaming
 
 namespace Avalonia.Controls.Win.WebView2.Interop;
@@ -22,9 +24,8 @@ internal struct tagPOINT
 [Guid("3DF9B733-B9AE-4A15-86B4-EB9EE9826469")]
 internal partial interface ICoreWebView2CompositionController
 {
-    IntPtr GetRootVisualTarget();
-    
-    void SetRootVisualTarget(IntPtr value);
+    IContainerVisual GetRootVisualTarget();
+    void SetRootVisualTarget(IContainerVisual value);
 
     void SendMouseInput(COREWEBVIEW2_MOUSE_EVENT_KIND eventKind, COREWEBVIEW2_MOUSE_EVENT_VIRTUAL_KEYS virtualKeys, uint mouseData, tagPOINT point);
 
