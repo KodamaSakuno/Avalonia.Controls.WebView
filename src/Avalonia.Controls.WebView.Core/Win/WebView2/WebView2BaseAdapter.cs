@@ -271,6 +271,14 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
         }
     }
 
+    protected virtual void RegisterCallbacks(WebViewCallbacks callbacks)
+    {
+    }
+
+    protected virtual void UnregisterCallbacks()
+    {
+    }
+
     private Action AddHandlers(ICoreWebView2 webView)
     {
         var callbacks = new WebViewCallbacks(new WeakReference<WebView2BaseAdapter>(this));
@@ -281,6 +289,7 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
         webView.add_NewWindowRequested(callbacks, out var token4);
         controller.add_MoveFocusRequested(callbacks, out var token6);
         controller.add_GotFocus(callbacks, out var token7);
+        RegisterCallbacks(callbacks);
 
         return () =>
         {
@@ -291,6 +300,7 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
             webView.remove_NewWindowRequested(token4);
             controller.remove_MoveFocusRequested(token6);
             controller.remove_MoveFocusRequested(token7);
+            UnregisterCallbacks();
         };
     }
 

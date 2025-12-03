@@ -18,15 +18,12 @@ namespace Avalonia.Controls.Win.WebView2;
 // With compositor backend, we create a dedicated Compositor instance on the UI thread,
 // And attach WebView2 to that compositor's tree.
 [SupportedOSPlatform("windows10.0.17763.0")]
-internal partial class WebView2CompAdapter(IntPtr handle, ICoreWebView2CompositionController controller)
+internal partial class WebView2CompAdapter
     // ICoreWebView2Controller can be queried from ICoreWebView2CompositionController. 
     // ReSharper disable once SuspiciousTypeConversion.Global
-    : WebView2BaseAdapter((ICoreWebView2Controller)controller), IWebViewAdapterWithOffscreenBuffer,
-        IWebViewAdapterWithOffscreenInput
+    : WebView2BaseAdapter, IWebViewAdapterWithOffscreenBuffer,
+        IWebViewAdapterWithOffscreenInput, IWebViewAdapterWithExplicitCursor
 {
-    public override IntPtr Handle { get; } = handle;
-    public override string HandleDescriptor => "Windows.UI.Composition.ContainerVisual";
-
     private static readonly Lazy<ICompositor> s_compositor = new(() =>
     {
         _ = DispatcherQueueStatics.GetOrCreateOnCurrentThread();
@@ -34,6 +31,29 @@ internal partial class WebView2CompAdapter(IntPtr handle, ICoreWebView2Compositi
                          ?? throw new InvalidOperationException("Failed to create Compositor instance.");
         return compositor;
     });
+
+    private readonly ICoreWebView2CompositionController _controller;
+    private EventRegistrationToken _cursorChangedToken;
+    private EventHandler? _cursorChangedHandler;
+
+    public WebView2CompAdapter(IntPtr handle, ICoreWebView2CompositionController controller)
+        : base((ICoreWebView2Controller)controller)
+    {
+        _controller = controller;
+        Handle = handle;
+    }
+
+    public event Action? DrawRequested;
+    public event EventHandler? CursorChanged
+    {
+        add => _cursorChangedHandler += value;
+        remove => _cursorChangedHandler -= value;
+    }
+
+    public StandardCursorType CurrentCursorType => WindowsUtility.MapCursor(_controller.GetSystemCursorId());
+
+    public override IntPtr Handle { get; }
+    public override string HandleDescriptor => "Windows.UI.Composition.ContainerVisual";
 
     public static async Task<WebViewAdapter.OffscreenWebViewAdapterBuilder> CreateBuilder(
         WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
@@ -97,12 +117,10 @@ internal partial class WebView2CompAdapter(IntPtr handle, ICoreWebView2Compositi
         };
     }
 
-    public event Action? DrawRequested;
-
     public async Task UpdateWriteableBitmap(PixelSize currentSize,
         FrameChainBase<WriteableBitmap, PixelSize>.IProducer producer)
     {
-        var target = controller.GetRootVisualTarget();
+        var target = _controller.GetRootVisualTarget();
 
         if (target is null || currentSize.Height == 0 || currentSize.Width == 0)
             return;
@@ -149,9 +167,23 @@ internal partial class WebView2CompAdapter(IntPtr handle, ICoreWebView2Compositi
         await Task.Run(() => GetVisualPixelBuffer(currentSize, producer, hEvent, hMap, cbMap));
     }
 
+    internal EventHandler? GetCursorChanged() => _cursorChangedHandler;
+
+    protected override void RegisterCallbacks(WebViewCallbacks callbacks)
+    {
+        _controller.add_CursorChanged(callbacks, out _cursorChangedToken);
+        base.RegisterCallbacks(callbacks);
+    }
+
+    protected override void UnregisterCallbacks()
+    {
+        _controller.remove_CursorChanged(_cursorChangedToken);
+        base.UnregisterCallbacks();
+    }
+
     protected override void SizeChangedCore(PixelSize containerSize)
     {
-        var target = controller.GetRootVisualTarget();
+        var target = _controller.GetRootVisualTarget();
         target?.SetSize(new winrtVector2 { X = containerSize.Width, Y = containerSize.Height });
 
         base.SizeChangedCore(containerSize);
@@ -210,7 +242,7 @@ internal partial class WebView2CompAdapter(IntPtr handle, ICoreWebView2Compositi
     {
         if (disposing)
         {
-            controller.SetRootVisualTarget(null);
+            _controller.SetRootVisualTarget(null);
         }
 
         base.Dispose(disposing);
@@ -252,7 +284,7 @@ internal partial class WebView2CompAdapter(IntPtr handle, ICoreWebView2Compositi
                 .COREWEBVIEW2_MOUSE_EVENT_KIND_MOVE,
             _ => throw new ArgumentOutOfRangeException(nameof(point.Properties.PointerUpdateKind))
         };
-        controller.SendMouseInput(changeType, virtualKeys, 0, position);
+        _controller.SendMouseInput(changeType, virtualKeys, 0, position);
         return true;
     }
 
@@ -262,14 +294,14 @@ internal partial class WebView2CompAdapter(IntPtr handle, ICoreWebView2Compositi
         var position = ToPoint(point.Position, dpi);
         if (delta.Y != 0)
         {
-            controller.SendMouseInput(
+            _controller.SendMouseInput(
                 COREWEBVIEW2_MOUSE_EVENT_KIND.COREWEBVIEW2_MOUSE_EVENT_KIND_WHEEL,
                 virtualKeys, (uint)delta.Y, position);
         }
 
         if (delta.X != 0)
         {
-            controller.SendMouseInput(
+            _controller.SendMouseInput(
                 COREWEBVIEW2_MOUSE_EVENT_KIND.COREWEBVIEW2_MOUSE_EVENT_KIND_HORIZONTAL_WHEEL,
                 virtualKeys, (uint)delta.X, position);
         }

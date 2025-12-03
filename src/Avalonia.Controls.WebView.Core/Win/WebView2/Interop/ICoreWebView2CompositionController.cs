@@ -35,7 +35,7 @@ internal partial interface ICoreWebView2CompositionController
 
     uint GetSystemCursorId();
 
-    void add_CursorChanged([MarshalAs(UnmanagedType.Interface)] IntPtr eventHandler, out EventRegistrationToken token);
+    void add_CursorChanged(ICoreWebView2CursorChangedEventHandler eventHandler, out EventRegistrationToken token);
 
     void remove_CursorChanged(EventRegistrationToken token);
 }

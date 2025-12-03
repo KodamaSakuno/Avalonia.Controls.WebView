@@ -413,6 +413,12 @@ internal interface IWebViewAdapterWithOffscreenBuffer : IWebViewAdapter
     Task UpdateWriteableBitmap(PixelSize currentSize, FrameChainBase<WriteableBitmap, PixelSize>.IProducer producer);
 }
 
+internal interface IWebViewAdapterWithExplicitCursor : IWebViewAdapter
+{
+    StandardCursorType CurrentCursorType { get; }
+    event EventHandler CursorChanged;
+}
+
 internal interface IWebViewWithPrint : IWebViewAdapter
 {
     bool ShowPrintUI();
