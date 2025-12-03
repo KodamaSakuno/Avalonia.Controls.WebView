@@ -21,6 +21,7 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
     private EventHandler<WebResourceRequestedEventArgs>? _webResourceRequested;
     private Action? _subscriptions;
 
+    protected bool Disposed { get; private set; } = false;
     public abstract IntPtr Handle { get; }
     public abstract string? HandleDescriptor { get; }
 
@@ -149,25 +150,31 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
 
     public virtual void SizeChanged(PixelSize containerSize)
     {
-        WebViewDispatcher.InvokeAsync(() =>
-        {
-            if (PInvoke.GetWindowRect(new HWND(Handle), out var rect))
-            {
-                if (controller is ICoreWebView2Controller3 controller3)
-                {
-                    controller3.SetBoundsMode(COREWEBVIEW2_BOUNDS_MODE.COREWEBVIEW2_BOUNDS_MODE_USE_RAW_PIXELS);
-                }
-
-                controller.SetBounds(new tagRECT
-                {
-                    right = rect.Width,
-                    bottom = rect.Height
-                });
-                controller.NotifyParentWindowPositionChanged();
-            }
-        });
+        WebViewDispatcher.InvokeAsync(() => SizeChangedCore(containerSize));
     }
 
+    protected virtual void SizeChangedCore(PixelSize containerSize)
+    {
+        // If HWND is available, prefer its size.
+        if (HandleDescriptor == "HWND" && PInvoke.GetWindowRect(new HWND(Handle), out var rect))
+        {
+            controller.SetBounds(new tagRECT
+            {
+                right = rect.Width,
+                bottom = rect.Height
+            });
+        }
+        else
+        {
+            controller.SetBounds(new tagRECT
+            {
+                right = containerSize.Width,
+                bottom = containerSize.Height
+            });
+        }
+        controller.NotifyParentWindowPositionChanged();
+    }
+    
     public virtual void SetParent(IPlatformHandle parent)
     {
         if (parent.HandleDescriptor != "HWND")
@@ -241,6 +248,7 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
         if (controller is ICoreWebView2Controller3 controller3)
         {
             controller3.SetShouldDetectMonitorScaleChanges(0);
+            controller3.SetBoundsMode(COREWEBVIEW2_BOUNDS_MODE.COREWEBVIEW2_BOUNDS_MODE_USE_RAW_PIXELS);
         }
 
         var settings = webView.GetSettings();
@@ -349,6 +357,7 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
     {
         if (disposing)
         {
+            Disposed = true;
             controller?.Close();
             _subscriptions?.Invoke();
         }

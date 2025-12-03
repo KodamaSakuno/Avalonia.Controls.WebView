@@ -24,8 +24,8 @@ internal struct tagPOINT
 [Guid("3DF9B733-B9AE-4A15-86B4-EB9EE9826469")]
 internal partial interface ICoreWebView2CompositionController
 {
-    IContainerVisual GetRootVisualTarget();
-    void SetRootVisualTarget(IContainerVisual value);
+    ICompositionVisual? GetRootVisualTarget();
+    void SetRootVisualTarget(ICompositionVisual? value);
 
     void SendMouseInput(COREWEBVIEW2_MOUSE_EVENT_KIND eventKind, COREWEBVIEW2_MOUSE_EVENT_VIRTUAL_KEYS virtualKeys, uint mouseData, tagPOINT point);
 

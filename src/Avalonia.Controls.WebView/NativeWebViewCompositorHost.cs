@@ -108,13 +108,14 @@ internal class NativeWebViewCompositorHost(WebViewAdapter.CompositorHostAdapterF
     {
         var adapter = (IWebViewAdapterWithOffscreenBuffer)TryGetAdapter()!;
 
+        var adapterSize = PixelSize.FromSize(Bounds.Size, TopLevel.GetTopLevel(this)!.RenderScaling);
         if (_firstDraw)
         {
             _firstDraw = false;
-            adapter.SizeChanged(PixelSize.FromSize(Bounds.Size, TopLevel.GetTopLevel(this)!.RenderScaling));
+            adapter.SizeChanged(adapterSize);
         }
 
-        await adapter.UpdateWriteableBitmap(_frameChain.Producer);
+        await adapter.UpdateWriteableBitmap(adapterSize, _frameChain.Producer);
         _customVisual?.SendHandlerMessage(VisualHandler.DrawRequested);
     }
 

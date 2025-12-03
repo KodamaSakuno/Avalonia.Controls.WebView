@@ -3,4 +3,5 @@ GetWindowRect
 SetParent
 GetWindowLong
 SetWindowLong
-
+WaitForSingleObject
+MapViewOfFile

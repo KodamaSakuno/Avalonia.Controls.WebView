@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
+using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.System.Memory;
 using Avalonia.Controls.Rendering;
 using Avalonia.Controls.Win.Interop;
 using Avalonia.Controls.Win.WebView2.Interop;
@@ -11,16 +15,25 @@ using Avalonia.Platform;
 
 namespace Avalonia.Controls.Win.WebView2;
 
+// With compositor backend, we create a dedicated Compositor instance on the UI thread,
+// And attach WebView2 to that compositor's tree.
 [SupportedOSPlatform("windows10.0.17763.0")]
-internal partial class WebView2CompAdapter(ICoreWebView2CompositionController controller)
+internal partial class WebView2CompAdapter(IntPtr handle, ICoreWebView2CompositionController controller)
     // ICoreWebView2Controller can be queried from ICoreWebView2CompositionController. 
     // ReSharper disable once SuspiciousTypeConversion.Global
     : WebView2BaseAdapter((ICoreWebView2Controller)controller), IWebViewAdapterWithOffscreenBuffer,
         IWebViewAdapterWithOffscreenInput
 {
-
-    public override IntPtr Handle => default; // TODO complete webview2 compositor
+    public override IntPtr Handle { get; } = handle;
     public override string HandleDescriptor => "Windows.UI.Composition.ContainerVisual";
+
+    private static readonly Lazy<ICompositor> s_compositor = new(() =>
+    {
+        _ = DispatcherQueueStatics.GetOrCreateOnCurrentThread();
+        var compositor = NativeWinRTMethods.CreateInstance<ICompositor>("Windows.UI.Composition.Compositor")
+                         ?? throw new InvalidOperationException("Failed to create Compositor instance.");
+        return compositor;
+    });
 
     public static async Task<WebViewAdapter.OffscreenWebViewAdapterBuilder> CreateBuilder(
         WindowsWebView2EnvironmentRequestedEventArgs environmentArgs)
@@ -55,27 +68,137 @@ internal partial class WebView2CompAdapter(ICoreWebView2CompositionController co
 
             var controller = await handler.Result.Task;
 
-            var dispatcherQueue = DispatcherQueueStatics.GetOrCreateOnCurrentThread();
-            var compositor = NativeWinRTMethods.CreateInstance<ICompositor>("Windows.UI.Composition.Compositor")
-                ?? throw new InvalidOperationException("Failed to create Compositor instance.");
-            var compositionVisual = compositor.CreateContainerVisual();
-            
+            var compositionVisual = s_compositor.Value.CreateContainerVisual();
+
             controller.SetRootVisualTarget(compositionVisual);
-            
-            var webView = new WebView2CompAdapter(controller);
+
+            IntPtr visualPtr;
+            unsafe
+            {
+                visualPtr = (IntPtr)ComInterfaceMarshaller<IContainerVisual>.ConvertToUnmanaged(compositionVisual);
+            }
+
+            var webView = new WebView2CompAdapter(visualPtr, controller);
             await webView.InitializeAsync(environmentArgs);
-            
+
+            var topLevel = TopLevel.GetTopLevel(parent);
+            topLevel?.RequestAnimationFrame(Action);
+
+            void Action(TimeSpan obj)
+            {
+                if (!webView.Disposed)
+                {
+                    webView.DrawRequested?.Invoke();
+                    topLevel?.RequestAnimationFrame(Action);
+                }
+            }
+
             return webView;
         };
     }
 
     public event Action? DrawRequested;
 
-    public Task UpdateWriteableBitmap(FrameChainBase<WriteableBitmap, PixelSize>.IProducer producer)
+    public async Task UpdateWriteableBitmap(PixelSize currentSize,
+        FrameChainBase<WriteableBitmap, PixelSize>.IProducer producer)
     {
-        throw new NotImplementedException();
+        var target = controller.GetRootVisualTarget();
+
+        if (target is null || currentSize.Height == 0 || currentSize.Width == 0)
+            return;
+
+        // ReSharper disable once SuspiciousTypeConversion.Global
+        var compositor = ((ICompositionObject)target).Compositor();
+        // ReSharper disable once SuspiciousTypeConversion.Global
+        var compositorCapture = (ICompositionCaptureTest)compositor;
+
+        // https://github.com/ocalvo/WorkTests/blob/a2f18151be579addc60d4464b1e2a9f54f8e3314/MediaTestManaged/DCompHelpers.cs#L162
+
+        //   Render Visual:
+        //   * This function is basically async and returns immediately after putting
+        //     a MILCMD onto the batch for the application channel, and marks the device dirty.
+        //   * It returns two handles by reference.
+        //   * The first handle (hMap) is to a map of bits.
+        //   * The second handle (hEvent) is to an event.
+        //   * The event is signaled when a commit has happened 
+        //      and the after actual renderpass has been rendered and presented.
+        //   * Once signaled, the bits are ready for us to grab.
+        //   * Any changes to the tree before the implicit commit sends the batch to the 
+        //      Compositor will be reflected in the capture, even if made after the initial
+        //      RenderVisual function call.
+        //   * Any changes to the tree after the implicit commit may safely modify the tree,
+        //      as they will be processed in a separate batch
+        var hMap = IntPtr.Zero;
+        var hEvent = IntPtr.Zero;
+        var hr = compositorCapture.RenderVisual(
+            target,
+            0, // offset X
+            0, // offset y
+            (uint)currentSize.Width,
+            (uint)currentSize.Height,
+            87 /* Bgra8 */,
+            ref hMap,
+            ref hEvent,
+            out var cbMap);
+
+        if (hr != 0)
+        {
+            throw new Exception("Render Visual Failed, ErrCode: " + hr);
+        }
+
+        await Task.Run(() => GetVisualPixelBuffer(currentSize, producer, hEvent, hMap, cbMap));
     }
 
+    protected override void SizeChangedCore(PixelSize containerSize)
+    {
+        var target = controller.GetRootVisualTarget();
+        target?.SetSize(new winrtVector2 { X = containerSize.Width, Y = containerSize.Height });
+
+        base.SizeChangedCore(containerSize);
+    }
+
+    private static unsafe void GetVisualPixelBuffer(
+        PixelSize size, FrameChainBase<WriteableBitmap, PixelSize>.IProducer producer,
+        IntPtr hEvent, IntPtr hMap, uint cbMap)
+    {
+        try
+        {
+            using (producer.GetNextFrame(size, out var frame))
+            {
+                var waitRet = PInvoke.WaitForSingleObject(new HANDLE(hEvent), 100);
+                if (waitRet == WAIT_EVENT.WAIT_OBJECT_0)
+                {
+                    var pbMap = PInvoke.MapViewOfFile(new HANDLE(hMap), FILE_MAP.FILE_MAP_WRITE, 0, 0, UIntPtr.Zero);
+
+                    if (pbMap != IntPtr.Zero)
+                    {
+                            using var buf = frame.Lock();
+
+                            Buffer.MemoryCopy(
+                                source: pbMap,
+                                destination: (void*)buf.Address,
+                                destinationSizeInBytes: buf.RowBytes * size.Height,
+                                sourceBytesToCopy: cbMap
+                            );
+                    }
+                }
+                else if (waitRet == WAIT_EVENT.WAIT_TIMEOUT)
+                {
+                    return;
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        $"RenderVisual event wait failed (0x{waitRet:x8}): {Marshal.GetLastWin32Error()}");
+                }
+            }
+        }
+        finally
+        {
+            PInvoke.CloseHandle(new HANDLE(hMap));
+            PInvoke.CloseHandle(new HANDLE(hEvent));
+        }
+    }
 #if COM_SOURCE_GEN
     [GeneratedComClass]
 #endif
@@ -87,6 +210,7 @@ internal partial class WebView2CompAdapter(ICoreWebView2CompositionController co
     {
         if (disposing)
         {
+            controller.SetRootVisualTarget(null);
         }
 
         base.Dispose(disposing);
@@ -98,10 +222,10 @@ internal partial class WebView2CompAdapter(ICoreWebView2CompositionController co
         return true;
     }
 
-    public bool PointerInput(PointerPoint point, KeyModifiers modifiers)
+    public bool PointerInput(PointerPoint point, double dpi, KeyModifiers modifiers)
     {
         var virtualKeys = KeyModifiersToVirtualKey(modifiers, point);
-        var position = ToPoint(point.Position);
+        var position = ToPoint(point.Position, dpi);
         var changeType = point.Properties.PointerUpdateKind switch
         {
             PointerUpdateKind.LeftButtonPressed => COREWEBVIEW2_MOUSE_EVENT_KIND
@@ -132,10 +256,10 @@ internal partial class WebView2CompAdapter(ICoreWebView2CompositionController co
         return true;
     }
 
-    public bool PointerWheelInput(Vector delta, PointerPoint point, KeyModifiers modifiers)
+    public bool PointerWheelInput(Vector delta, PointerPoint point, double dpi, KeyModifiers modifiers)
     {
         var virtualKeys = KeyModifiersToVirtualKey(modifiers, point);
-        var position = ToPoint(point.Position);
+        var position = ToPoint(point.Position, dpi);
         if (delta.Y != 0)
         {
             controller.SendMouseInput(
@@ -153,16 +277,11 @@ internal partial class WebView2CompAdapter(ICoreWebView2CompositionController co
         return true;
     }
 
-    private static tagPOINT ToPoint(Point point)
+    private static tagPOINT ToPoint(Point point, double dpi)
     {
-        // TODO: Handle DPI scaling
-        return new tagPOINT
-        {
-            x = (int)point.X,
-            y = (int)point.Y
-        };
+        return new tagPOINT { x = (int)(point.X * dpi), y = (int)(point.Y * dpi) };
     }
-    
+
     private static COREWEBVIEW2_MOUSE_EVENT_VIRTUAL_KEYS KeyModifiersToVirtualKey(
         KeyModifiers modifiers, PointerPoint point)
     {

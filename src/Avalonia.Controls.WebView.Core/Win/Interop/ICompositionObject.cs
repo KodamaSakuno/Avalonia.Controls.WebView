@@ -10,8 +10,12 @@ namespace Avalonia.Controls.Win.Interop;
 [ComImport]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 #endif
-[Guid("02F6BC74-ED20-4773-AFE6-D49B4A93DB32")]
-internal partial interface IContainerVisual : ICompositionVisual
+[Guid("BCB4AD45-7609-4550-934F-16002A68FDED")]
+internal partial interface ICompositionObject : IInspectable
 {
-    IntPtr GetChildren();
+    ICompositor Compositor();
+    IDispatcherQueue Dispatcher();
+    IntPtr Properties();
+    IntPtr StartAnimation(IntPtr propertyNameHString);
+    void StopAnimation(IntPtr propertyNameHString);
 }
