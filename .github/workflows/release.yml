@@ -25,6 +25,7 @@ jobs:
     if: ${{inputs.nuget}}
     uses: AvaloniaUI/build-common/.github/workflows/library-cicd.yml@main
     with:
+      install_workloads: "android"
       artifact_glob: Avalonia.Controls.WebView.*.nupkg
       validate_release_branch: true
       nuget_feed: ${{vars.INTERNAL_FEED_UPLOAD_URL}}
@@ -38,6 +39,7 @@ jobs:
     if: ${{inputs.xpf}}
     uses: AvaloniaUI/build-common/.github/workflows/library-cicd.yml@main
     with:
+      install_workloads: "android"
       artifact_glob: Avalonia.Xpf.Controls.WebView.*.nupkg
       nuget_feed: ${{vars.XPF_FEED_UPLOAD_URL}}
       validate_release_branch: true
