@@ -12,7 +12,7 @@ jobs:
     uses: AvaloniaUI/build-common/.github/workflows/library-cicd.yml@main
     with:
       artifact_glob: Avalonia.Controls.WebView.*.nupkg
-      nuget_feed: ${{ variables.NIGHTLY_FEED_UPLOAD_URL }}
+      nuget_feed: ${{ vars.NIGHTLY_FEED_UPLOAD_URL }}
     secrets:
       checkout_token: ${{ secrets.SUBMODULE_TOKEN }}
       nightly_api_key: ${{secrets.NIGHTLY_FEED_API_KEY}}
