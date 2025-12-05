@@ -4,7 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       nuget:
-          description: 'Push to the Public NuGet'
+          description: 'Push to the Public NuGet Feed'
+          required: true
+          type: boolean
+          default: false
+      xpf:
+          description: 'Push to the Public XPF Feed'
           required: true
           type: boolean
           default: false
@@ -30,7 +35,7 @@ jobs:
       nuget_api_key: ${{secrets.INTERNAL_FEED_API_KEY}}
 
   release-for-xpf:
-    if: ${{inputs.nuget}}
+    if: ${{inputs.xpf}}
     uses: AvaloniaUI/build-common/.github/workflows/library-cicd.yml@main
     with:
       artifact_glob: Avalonia.Xpf.Controls.WebView.*.nupkg
