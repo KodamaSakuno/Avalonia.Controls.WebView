@@ -83,8 +83,10 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
             {
                 controller2.SetDefaultBackgroundColor(new COREWEBVIEW2_COLOR
                 {
-                    // WebView2 doesn't support any decimal alpha channel 
-                    A = value.A > 130 ? (byte)255 : (byte)0,
+                    // WebView2 doesn't support any decimal alpha channel
+                    A = Environment.OSVersion.Version <= new Version(6, 1) ?
+                        (byte)255 : // Any A value other than 255 will result in E_INVALIDARG on Windows 7.
+                        (value.A > 130 ? (byte)255 : (byte)0), // WebView2 doesn't support any decimal alpha channel
                     R = value.R,
                     G = value.G,
                     B = value.B,
