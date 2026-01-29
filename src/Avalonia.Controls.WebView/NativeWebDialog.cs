@@ -1,9 +1,10 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using Avalonia.Controls.Gtk;
-using Avalonia.Platform;
+using AvPlatform = Avalonia.Platform;
 using Core = Avalonia.Controls;
 using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
 #if WPF
@@ -386,6 +387,13 @@ namespace Avalonia.Xpf.Controls
         /// <inheritdoc/>
         public Task<Stream> PrintToPdfStreamAsync() => TryGetAdapter() is Core.IWebViewWithPrint adapter ?
             adapter.PrintToPdfStreamAsync() :
+            Task.FromException<Stream>(new PlatformNotSupportedException());
+
+        /// <inheritdoc cref="PrintToPdfStreamAsync()"/>
+        [UnsupportedOSPlatform("macos")]
+        [UnsupportedOSPlatform("ios")]
+        public Task<Stream> PrintToPdfStreamAsync(AvPlatform.WebViewPrintSettings printSettings) => TryGetAdapter() is Core.IWebViewWithPrintWithOptions adapter ?
+            adapter.PrintToPdfStreamAsync(printSettings) :
             Task.FromException<Stream>(new PlatformNotSupportedException());
 
         /// <summary>
