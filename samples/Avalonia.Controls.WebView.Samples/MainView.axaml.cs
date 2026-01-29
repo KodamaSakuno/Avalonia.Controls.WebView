@@ -408,7 +408,7 @@ public partial class MainView : UserControl
         e.Request.Headers.TrySet("X-MyHeader", $"Time: {DateTime.Now:O}");
     }
 
-    private void Offscreen_EnvironmentRequested(object? sender, WebViewEnvironmentRequestedEventArgs e)
+    private void Offscreen_EnvironmentRequested(object? sender, AC.WebViewEnvironmentRequestedEventArgs e)
     {
         if (e is AP.WindowsWebView2EnvironmentRequestedEventArgs webView2)
         {
