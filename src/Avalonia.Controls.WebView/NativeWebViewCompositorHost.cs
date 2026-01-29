@@ -118,7 +118,9 @@ internal class NativeWebViewCompositorHost(WebViewAdapter.CompositorHostAdapterF
 
     private async void OffscreenAdapter_OnDrawRequested()
     {
-        var adapter = (IWebViewAdapterWithOffscreenBuffer)TryGetAdapter()!;
+        var adapter = (IWebViewAdapterWithOffscreenBuffer?)TryGetAdapter();
+        if (adapter is null)
+            return;
 
         var adapterSize = PixelSize.FromSize(Bounds.Size, TopLevel.GetTopLevel(this)!.RenderScaling);
         if (_firstDraw)

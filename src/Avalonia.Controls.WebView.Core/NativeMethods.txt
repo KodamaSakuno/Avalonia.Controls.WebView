@@ -5,3 +5,4 @@ GetWindowLong
 SetWindowLong
 WaitForSingleObject
 MapViewOfFile
+UnmapViewOfFile

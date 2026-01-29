@@ -177,7 +177,7 @@ internal partial class WebView2CompAdapter
 
         try
         {
-            var wh = new ManualResetEvent(false);
+            using var wh = new ManualResetEvent(false);
             wh.SafeWaitHandle = new SafeWaitHandle(hEvent, ownsHandle: false);
 
             var tcs = new TaskCompletionSource<bool>();
@@ -200,16 +200,22 @@ internal partial class WebView2CompAdapter
 
                 if (pbMap != IntPtr.Zero)
                 {
-                    using var buf = frame.Lock();
-
-                    unsafe
+                    try
                     {
-                        Buffer.MemoryCopy(
-                            source: pbMap,
-                            destination: (void*)buf.Address,
-                            destinationSizeInBytes: buf.RowBytes * currentSize.Height,
-                            sourceBytesToCopy: cbMap
-                        );
+                        using var buf = frame.Lock();
+                        unsafe
+                        {
+                            Buffer.MemoryCopy(
+                                source: pbMap,
+                                destination: (void*)buf.Address,
+                                destinationSizeInBytes: buf.RowBytes * currentSize.Height,
+                                sourceBytesToCopy: cbMap
+                            );
+                        }
+                    }
+                    finally
+                    {
+                        PInvoke.UnmapViewOfFile(pbMap);
                     }
                 }
             }
