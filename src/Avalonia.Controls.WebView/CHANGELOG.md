@@ -1,3 +1,14 @@
+# 11.3.16
+
+- New WebViewAdapterInfo API to retrieve WebView engine and availability information
+- Implemented Android printing functions
+- Fixed Windows 7 support for WebView2
+- Experimental WebView2 offscreen rendering, can be enabled via WindowsWebView2EnvironmentRequestedEventArgs
+
+# 11.3.15
+
+- Fixed threading issue on XPF
+
 # 11.3.14
 
 - Fixed crash when using `NativeWebView.Background` on iOS

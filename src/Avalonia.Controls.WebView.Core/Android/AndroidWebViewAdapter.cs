@@ -3,11 +3,15 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 
 using Android.Graphics;
+using Android.Graphics.Pdf;
+using Android.Print;
+using Android.Print.Pdf;
 using Android.Runtime;
 using Android.Views;
 using Android.Webkit;
@@ -24,13 +28,19 @@ using IPlatformHandle = Avalonia.Platform.IPlatformHandle;
 
 namespace Avalonia.Controls.Android;
 
-internal class AndroidWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterWithInputRedirect, IWebViewAdapterWithCookieManager, IAndroidWebViewPlatformHandle
+internal class AndroidWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterWithInputRedirect,
+    IWebViewAdapterWithCookieManager, IAndroidWebViewPlatformHandle, IWebViewWithPrintWithOptions
 {
     private const string PostAvWebViewMessageName = "postAvWebViewMessage";
     private static bool s_canSetDataDirectorySuffix = true;
     private readonly JavaScriptInterface _jsInterface;
     private WebView? _webView;
 
+    static AndroidWebViewAdapter()
+    {
+        WebView.EnableSlowWholeDocumentDraw();
+    }
+    
     public AndroidWebViewAdapter(IPlatformHandle parent, AndroidWebViewEnvironmentRequestedEventArgs environmentArgs)
         : this(
             (parent as AndroidViewControlHandle)?.View.Context ?? global::Android.App.Application.Context,
@@ -265,6 +275,133 @@ internal class AndroidWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapter
         }
 
         return Task.FromResult<IReadOnlyList<Cookie>>(cookies);
+    }
+
+    public bool ShowPrintUI()
+    {
+        if (_webView?.Context?.GetSystemService(global::Android.Content.Context.PrintService) is not PrintManager printManager)
+        {
+            return false;
+        }
+
+        var jobName = "Print to PDF";
+        if (_webView?.CreatePrintDocumentAdapter(jobName) is not { } printAdapter)
+        {
+            return false;
+        }
+
+        var builder = new PrintAttributes.Builder();
+        builder = builder.SetMediaSize(PrintAttributes.MediaSize.UnknownPortrait!);
+
+        printManager.Print(jobName, printAdapter, builder.Build());
+        return true;
+    }
+
+    public Task<Stream> PrintToPdfStreamAsync() => Task.FromResult(PrintToPdfStreamInternalAsync(null));
+    public Task<Stream> PrintToPdfStreamAsync(WebViewPrintSettings settings) => Task.FromResult(PrintToPdfStreamInternalAsync(settings));
+
+    private Stream PrintToPdfStreamInternalAsync(WebViewPrintSettings? settings)
+    {
+        if (_webView is null)
+            throw new ObjectDisposedException(nameof(AndroidWebViewAdapter));
+
+        // EnableSlowWholeDocumentDraw() is called in static constructor,
+        // so Draw() will render the entire document, not just the visible portion
+        
+        // Width is in device pixels, ContentHeight is in CSS pixels
+        // Use Scale to convert ContentHeight to device pixels
+#pragma warning disable CS0618 // Scale is deprecated but still works
+        var deviceScale = _webView.Scale;
+#pragma warning restore CS0618
+        var contentWidth = _webView.Width;
+        var contentHeight = (int)(_webView.ContentHeight * deviceScale);
+
+        if (contentWidth <= 0) contentWidth = _webView.Width;
+        if (contentHeight <= 0) contentHeight = _webView.Height;
+
+        using var bitmap = Bitmap.CreateBitmap(contentWidth, contentHeight, Bitmap.Config.Argb8888!)
+            ?? throw new InvalidOperationException("Failed to create bitmap for PDF generation");
+        using var canvas = new global::Android.Graphics.Canvas(bitmap);
+
+        canvas.DrawColor(Color.White);
+        _webView.Draw(canvas);
+
+
+        // Calculate PDF page dimensions (in points, 72 points = 1 inch)
+        // Default: Letter size (8.5 x 11 inches)
+        var basePageWidth = 612; // 8.5 inches * 72
+        var basePageHeight = 792; // 11 inches * 72
+
+        var orientation = settings?.Orientation ?? WebViewPrintOrientation.Portrait;
+        int pageWidth, pageHeight;
+        if (orientation == WebViewPrintOrientation.Landscape)
+        {
+            pageWidth = basePageHeight;
+            pageHeight = basePageWidth;
+        }
+        else
+        {
+            pageWidth = basePageWidth;
+            pageHeight = basePageHeight;
+        }
+
+        var marginLeft = settings?.MarginLeft ?? 0;
+        var marginTop = settings?.MarginTop ?? 0;
+        var marginRight = settings?.MarginRight ?? 0;
+        var marginBottom = settings?.MarginBottom ?? 0;
+
+        var printableWidth = pageWidth - marginLeft - marginRight;
+        var printableHeight = pageHeight - marginTop - marginBottom;
+
+        var scaleFactor = (float)(settings?.ScaleFactor ?? 1.0);
+
+        var pdfScale = (float)printableWidth / contentWidth * scaleFactor;
+        var scaledContentHeight = (int)(contentHeight * pdfScale);
+
+        var pageCount = (int)Math.Ceiling((double)scaledContentHeight / printableHeight);
+        if (pageCount < 1) pageCount = 1;
+
+        using var document = new PdfDocument();
+
+        for (var i = 0; i < pageCount; i++)
+        {
+            var pageInfo = new PdfDocument.PageInfo.Builder(pageWidth, pageHeight, i).Create();
+            var page = document.StartPage(pageInfo);
+
+            var pdfCanvas = page!.Canvas!;
+
+            // Apply margins
+            pdfCanvas.Translate(marginLeft, marginTop);
+
+            // Calculate the portion of content for this page (in source bitmap pixels)
+            var sourceTop = (int)Math.Round(i * printableHeight / pdfScale);
+            var sourceBottom = (int)Math.Round((i + 1) * printableHeight / pdfScale);
+            sourceBottom = Math.Min(sourceBottom, contentHeight);
+            var sourceHeight = sourceBottom - sourceTop;
+
+            if (sourceHeight <= 0)
+            {
+                document.FinishPage(page);
+                continue;
+            }
+
+            // Destination height should match the scaled source height
+            var destHeight = (float)sourceHeight * pdfScale;
+
+            pdfCanvas.DrawBitmap(
+                bitmap!,
+                new(0, sourceTop, contentWidth, sourceBottom),
+                new RectF(0, 0, printableWidth, destHeight),
+                null);
+
+            document.FinishPage(page);
+        }
+
+        var ms = new MemoryStream();
+        document.WriteTo(ms);
+        ms.Position = 0;
+
+        return ms;
     }
 
     internal static DetailedWebViewAdapterInfo GetAndroidWebViewInfo(WebViewEmbeddingScenario scenarios =
