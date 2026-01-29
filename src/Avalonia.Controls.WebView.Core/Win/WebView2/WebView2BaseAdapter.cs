@@ -393,12 +393,10 @@ internal abstract partial class WebView2BaseAdapter(ICoreWebView2Controller cont
     unsafe IntPtr IWindowsWebView2PlatformHandle.CoreWebView2Controller =>
         new(ComInterfaceMarshaller<ICoreWebView2Controller>.ConvertToUnmanaged(controller));
 
-    internal static DetailedWebViewAdapterInfo GetWebView2Info(string? browserExecutableFolder)
+    internal static DetailedWebViewAdapterInfo GetWebView2Info(
+        string? browserExecutableFolder,
+        WebViewEmbeddingScenario scenarios = WebViewEmbeddingScenario.NativeControlHost)
     {
-        const WebViewEmbeddingScenario scenarios =
-            //WebViewEmbeddingScenario.OffscreenRenderer |
-            WebViewEmbeddingScenario.NativeControlHost;
-
         if (!OperatingSystemEx.IsWindows())
         {
             return WebViewAdapterInfo.PlatformNotSupported(WebViewAdapterType.WebView2);
