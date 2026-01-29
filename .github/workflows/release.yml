@@ -27,6 +27,7 @@ jobs:
     with:
       install_workloads: "android"
       artifact_glob: Avalonia.Controls.WebView.*.nupkg
+      artifact_name: Avalonia.Controls.WebView
       validate_release_branch: true
       nuget_feed: ${{vars.INTERNAL_FEED_UPLOAD_URL}}
       create_github_release: ${{inputs.create_release}}
@@ -41,6 +42,7 @@ jobs:
     with:
       install_workloads: "android"
       artifact_glob: Avalonia.Xpf.Controls.WebView.*.nupkg
+      artifact_name: Avalonia.Xpf.Controls.WebView
       nuget_feed: ${{vars.XPF_FEED_UPLOAD_URL}}
       validate_release_branch: true
     secrets:
