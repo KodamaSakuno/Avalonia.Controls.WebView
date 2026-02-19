@@ -5,7 +5,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
-using Avalonia.Controls.Utils;
 using Avalonia.Controls.Win.WebView2.Interop;
 using Avalonia.Logging;
 using Avalonia.Platform;

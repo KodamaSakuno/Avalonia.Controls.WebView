@@ -225,11 +225,7 @@ namespace Avalonia.Xpf.Controls
         }
 
         /// <inheritdoc/>
-        public void NavigateToString(
-#if NET8_0_OR_GREATER
-            [StringSyntax("html")]
-#endif
-            string text)
+        public void NavigateToString([StringSyntax("html")] string text)
         {
             if (TryGetAdapter() is { } adapter)
                 adapter.NavigateToString(text);

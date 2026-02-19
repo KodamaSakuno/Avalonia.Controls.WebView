@@ -1,12 +1,4 @@
-﻿using System;
-using Android.App;
-using Android.Content;
-using Android.Content.PM;
-using Android.OS;
-using Avalonia.Android;
-using Avalonia.Controls.Android;
-
-namespace Avalonia.Controls.WebView.Samples.Android;
+﻿namespace Avalonia.Controls.WebView.Samples.Android;
 
 [Activity(
     Label = "Avalonia.Controls.WebView.Samples",

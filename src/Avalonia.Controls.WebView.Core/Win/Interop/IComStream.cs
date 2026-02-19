@@ -87,11 +87,7 @@ internal unsafe class DataStreamFromComStream(IComStream stream) : Stream
         return bytesRead;
     }
 
-    public
-#if NET6_0_OR_GREATER
-        override
-#endif
-        int Read(Span<byte> buffer)
+    public override int Read(Span<byte> buffer)
     {
         if (_stream is null)
             throw new ObjectDisposedException(nameof(DataStreamFromComStream));
@@ -149,11 +145,7 @@ internal unsafe class DataStreamFromComStream(IComStream stream) : Stream
         throw new IOException();
     }
 
-    public
-#if NET6_0_OR_GREATER
-        override
-#endif
-        void Write(ReadOnlySpan<byte> buffer)
+    public override void Write(ReadOnlySpan<byte> buffer)
     {
         if (_stream is null)
             throw new ObjectDisposedException(nameof(DataStreamFromComStream));

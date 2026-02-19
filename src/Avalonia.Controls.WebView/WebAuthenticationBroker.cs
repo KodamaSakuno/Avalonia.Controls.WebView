@@ -69,14 +69,12 @@ namespace Avalonia.Xpf.Controls
                         options.RequestUri, options.RedirectUri.Scheme, options.NonPersistent);
                     return new WebAuthenticationResult(uri);
                 }
-#if NET8_0_OR_GREATER
                 else if (OperatingSystem.IsBrowser())
                 {
                     var uri = await Core.Browser.BrowserWebAuthenticationBroker.AuthenticateAsync(avTopLevel,
                         options.RequestUri, options.RedirectUri);
                     return new WebAuthenticationResult(uri);
                 }
-#endif
 #endif
             }
 
