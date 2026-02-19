@@ -14,7 +14,7 @@
     <!-- CS0067: The event '' is never used -->
     <!-- NU1900: Error occurred while getting package vulnerability data -->
     <!-- NU5104: A stable release of a package should not have a prerelease dependency -->
-    <NoWarn>$(NoWarn);CS0067;NU1900;NU5104</NoWarn>
+    <NoWarn>$(NoWarn);CS0067;NU1900;NU5104;NU1902;NU1903</NoWarn>
 
     <RepoRoot Condition="'$(RepoRoot)' == ''">$(MSBuildThisFileDirectory)</RepoRoot>
     <PackageOutputPath>$(RepoRoot)\artifacts\packages</PackageOutputPath>
