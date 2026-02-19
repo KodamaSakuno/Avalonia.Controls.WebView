@@ -46,8 +46,8 @@ class Build : NukeBuild
 
     Target RunTests => _ => _
         .DependsOn(OutputParameters)
-        .Executes(() => DotNetTest(c => c
-            .SetProjectFile(SolutionFile)
+        .Executes(() => DotNetRun(c => c
+            .SetProjectFile(RootDirectory / "tests" / "Avalonia.Controls.WebView.Tests" / "Avalonia.Controls.WebView.Tests.csproj")
             .SetVerbosity(DotNetVerbosity.minimal)
             .SetConfiguration(Configuration)
         ));
