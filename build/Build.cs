@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using NuGet.Versioning;
 using Nuke.Common;
 using Nuke.Common.IO;
 using Nuke.Common.Tooling;
@@ -15,7 +17,7 @@ class Build : NukeBuild
         Execute<Build>(x => x.CopyPackagesToNuGetCache) :
         Execute<Build>(x => x.CreateNugetPackages);
 
-    [NuGetPackage("Babel.Obfuscator.Tool", "babel.dll", Framework = "net9.0")] readonly Tool Babel = null!;
+    [NuGetPackage("dotnet-ilrepack", "ILRepackTool.dll", Framework = "net8.0")] readonly Tool IlRepackTool = null!;
 
     [Parameter("Configuration to build - Default is 'Debug' (local) or 'Release' (server)")]
     readonly Configuration Configuration = Configuration.Release;
@@ -52,34 +54,32 @@ class Build : NukeBuild
             .SetConfiguration(Configuration)
         ));
 
-    Target RunObfuscate => _ => _
-        .OnlyWhenStatic(ShouldObfuscate)
+    Target IlMerge => _ => _
         .DependsOn(Compile)
+        .DependsOn(RunTests)
         .Executes(() =>
         {
-            string[] projectsToObfuscate =
+            string[] projectsToProcess =
             [
                 "Avalonia.Controls.WebView",
                 "Avalonia.Xpf.Controls.WebView"
             ];
+
             foreach (var project in (RootDirectory / "src").GlobFiles("**/*.csproj")
-                     .Where(p => projectsToObfuscate.Contains(p.NameWithoutExtension)))
+                     .Where(p => projectsToProcess.Contains(p.NameWithoutExtension)))
             {
                 List<string> dependencies = ["Avalonia.Controls.WebView.Core"];
 
                 var tfms = (project.Parent / "bin" / Configuration).GetDirectories();
-                NukeExtensions.Babel.Obfuscate(
-                    Babel,
-                    assemblyName: project.NameWithoutExtension,
-                    targets: tfms.Select(tfm => new Babel.ObfuscationTargetFramework(tfm, dependencies.ToArray())),
-                    signKey: Statics.AvaloniaStrongNameKey,
-                    licenseFile: Statics.BabelLicense,
-                    rulesFiles: [
-                        Statics.BabelRules,
-                        RootDirectory / "build" / "BabelWebView.rules"
-                    ],
-                    // MONO trimmer doesn't support shared lambdas that are associated with inlined method calls.
-                    inlineExpansion: false);
+
+                NukeExtensions.IlMerge.Merge(IlRepackTool,
+                    assemblyName: Path.GetFileNameWithoutExtension(project.Name)!,
+                    targets: tfms.Select(tfm => new IlMerge.MergeTargetFramework(tfm, dependencies.ToArray(),
+                        tfm.ToString().Contains("android") ? GetExtraDepLibs() : null)),
+                    internalize: false,
+                    renameInternalized: false,
+                    publicApiList: null,
+                    signKey: Statics.AvaloniaStrongNameKey);
             }
         });
 
@@ -87,7 +87,7 @@ class Build : NukeBuild
         .DependsOn(OutputParameters)
         .DependsOn(RunTests)
         .DependsOn(Compile)
-        .DependsOn(RunObfuscate)
+        .DependsOn(IlMerge)
         .Executes(() =>
         {
             var srcRootDirectory = RootDirectory / "src";
@@ -118,5 +118,18 @@ class Build : NukeBuild
             isPackingToLocalCache: RunningTargets.Concat(ScheduledTargets)
                 .Any(t => t.Name == nameof(CopyPackagesToNuGetCache)))
         .ToString();
-    bool ShouldObfuscate() => Obfuscate ?? (Configuration == Configuration.Release);
+
+    static IEnumerable<string> GetExtraDepLibs()
+    {
+        // See https://github.com/gluck/il-repack/issues/399
+        var androidSdk = NuGetPackageResolver.GetGlobalInstalledPackage("Microsoft.Android.Ref.34",
+            new VersionRange(new NuGetVersion(1, 0, 0)), null)?.Directory;
+        if (androidSdk is null)
+        {
+            throw new DirectoryNotFoundException("Unable to find installed \"Microsoft.Android.Ref.34\" nuget package.");
+        }
+
+        var androidRefs = androidSdk / "ref" / "net8.0";
+        yield return androidRefs;
+    }
 }

@@ -27,8 +27,8 @@
         "Compile",
         "CopyPackagesToNuGetCache",
         "CreateNugetPackages",
+        "IlMerge",
         "OutputParameters",
-        "RunObfuscate",
         "RunTests"
       ]
     },
