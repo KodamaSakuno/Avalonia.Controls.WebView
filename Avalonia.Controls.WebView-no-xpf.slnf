@@ -1,0 +1,17 @@
+﻿{
+  "solution": {
+    "path": "Avalonia.Controls.WebView.slnx",
+    "projects": [
+      "build-common\\nuke\\NukeExtensions.csproj",
+      "build\\_build.csproj",
+      "samples\\Avalonia.Controls.WebView.Samples.Android\\Avalonia.Controls.WebView.Samples.Android.csproj",
+      "samples\\Avalonia.Controls.WebView.Samples.Browser\\Avalonia.Controls.WebView.Samples.Browser.csproj",
+      "samples\\Avalonia.Controls.WebView.Samples.Desktop\\Avalonia.Controls.WebView.Samples.Desktop.csproj",
+      "samples\\Avalonia.Controls.WebView.Samples.iOS\\Avalonia.Controls.WebView.Samples.iOS.csproj",
+      "samples\\Avalonia.Controls.WebView.Samples\\Avalonia.Controls.WebView.Samples.csproj",
+      "src\\Avalonia.Controls.WebView.Core\\Avalonia.Controls.WebView.Core.csproj",
+      "src\\Avalonia.Controls.WebView\\Avalonia.Controls.WebView.csproj",
+      "tests\\Avalonia.Controls.WebView.Tests\\Avalonia.Controls.WebView.Tests.csproj"
+    ]
+  }
+}
