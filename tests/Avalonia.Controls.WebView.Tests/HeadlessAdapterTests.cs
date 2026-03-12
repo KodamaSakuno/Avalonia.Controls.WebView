@@ -228,4 +228,23 @@ public class HeadlessAdapterTests : HeadlessTestsBase
 
         Assert.True(navCompleted);
     }
+
+    [AvaloniaFact]
+    public async Task NativeWebView_NavigateToString_With_BaseUri()
+    {
+        var window = new Window();
+        var webView = new NativeWebView();
+        bool navCompleted = false;
+        webView.EnvironmentRequested += (_, _) => { };
+        webView.NavigationCompleted += (_, _) => navCompleted = true;
+        window.Content = webView;
+        window.Show();
+
+        var baseUri = new Uri("https://example.com/");
+        webView.NavigateToString("<html>test</html>", baseUri);
+        await DoDelay();
+
+        Assert.True(navCompleted);
+        Assert.Equal(baseUri, webView.Source);
+    }
 }
