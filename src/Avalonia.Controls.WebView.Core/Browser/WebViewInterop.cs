@@ -88,5 +88,28 @@ internal static partial class WebViewInterop
 
     [JSImport("setSandbox", "av-webview")]
     public static partial void SetSandbox(JSObject iframe, string? value);
+
+    [JSImport("openDialogWindow", "av-webview")]
+    [return: JSMarshalAs<JSType.Array<JSType.Object>>]
+    public static partial JSObject[] OpenDialogWindow(string? title, int width, int height);
+
+    [JSImport("closeDialogWindow", "av-webview")]
+    public static partial void CloseDialogWindow(JSObject popup);
+
+    [JSImport("resizeDialogWindow", "av-webview")]
+    public static partial bool ResizeDialogWindow(JSObject popup, int width, int height);
+
+    [JSImport("moveDialogWindow", "av-webview")]
+    public static partial bool MoveDialogWindow(JSObject popup, int x, int y);
+
+    [JSImport("setDialogTitle", "av-webview")]
+    public static partial void SetDialogTitle(JSObject popup, string? title);
+
+    [JSImport("subscribeDialogClose", "av-webview")]
+    [return: JSMarshalAs<JSType.Function>]
+    public static partial Action SubscribeDialogClose(
+        JSObject popup,
+        [JSMarshalAs<JSType.Function>]
+        Action onClose);
 }
 #endif

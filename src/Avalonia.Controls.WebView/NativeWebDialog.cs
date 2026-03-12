@@ -399,6 +399,8 @@ namespace Avalonia.Xpf.Controls
         {
 #if ANDROID
             var dialogImpl = new Android.AndroidNativeWebViewDialog(args => EnvironmentRequested?.Invoke(this, args));
+#elif BROWSER
+            var dialogImpl = new Browser.BrowserWindowNativeWebViewDialog(args => EnvironmentRequested?.Invoke(this, args));
 #else
             Core.INativeWebViewDialog dialogImpl;
             // Special case for GTK, as we want to use GTK window instead of Avalonia window there.

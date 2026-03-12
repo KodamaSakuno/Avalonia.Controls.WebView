@@ -48,6 +48,16 @@ internal class BrowserIFrameAdapter : JSObjectControlHandle, IWebViewAdapter,
         }
     }
 
+    internal static async Task<BrowserIFrameAdapter> CreateFromIframe(
+        JSObject iframe,
+        BrowserWebViewEnvironmentRequestedEventArgs environmentArgs)
+    {
+        await s_importModule.Value;
+        var adapter = new BrowserIFrameAdapter(iframe);
+        await adapter.InitializeAsync(environmentArgs);
+        return adapter;
+    }
+
     public Color DefaultBackground
     {
         set
