@@ -71,7 +71,7 @@ internal partial class HeadlessWebViewAdapter : IWebViewAdapterWithOffscreenBuff
         }
     }
 
-    public string? UserAgent { get; set; }
+    public string? UserAgent { get => null; set { } }
 
     public void SizeChanged(PixelSize containerSize)
     {
