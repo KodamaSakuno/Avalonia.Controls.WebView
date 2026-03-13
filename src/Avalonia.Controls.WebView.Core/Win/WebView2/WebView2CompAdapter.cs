@@ -274,7 +274,7 @@ internal partial class WebView2CompAdapter
     public bool TextInput(string text)
     {
         // Will be implicitly handled by Windows itself.
-        return true;
+        return false;
     }
 
     public bool PointerInput(PointerPoint point, int clickCount, double dpi, KeyModifiers modifiers)
