@@ -28,4 +28,10 @@ public sealed class LinuxWpeWebViewEnvironmentRequestedEventArgs : WebViewEnviro
     /// Note: this choice is process-global and affects all WebView instances.
     /// </summary>
     public WpeRenderingMode RenderingMode { get; set; } = WpeRenderingMode.Auto;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether to prefer WebKitGTK instead of WPE WebKit.
+    /// When set to true, the GTK-based WebView adapter will be used even if WPE is available.
+    /// </summary>
+    public bool PreferWebKitGtkInstead { get; set; }
 }

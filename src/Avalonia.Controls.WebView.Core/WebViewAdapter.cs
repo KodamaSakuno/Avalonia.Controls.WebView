@@ -129,12 +129,15 @@ internal static class WebViewAdapter
                 environmentRequested(args);
                 await deferralManager.WaitForDeferralsAsync();
 
-                var builder = await Linux.WpeWebViewAdapter.CreateBuilder(args);
-                return new CompositorHostAdapterFactory(
-                    builder,
-                    Linux.WpeWebViewAdapter.GetWpeInfo());
+                if (!args.PreferWebKitGtkInstead)
+                {
+                    var builder = await Linux.WpeWebViewAdapter.CreateBuilder(args);
+                    return new CompositorHostAdapterFactory(
+                        builder,
+                        Linux.WpeWebViewAdapter.GetWpeInfo());
+                }
             }
-            else
+
             {
                 var args = new GtkWebViewEnvironmentRequestedEventArgs(deferralManager);
                 environmentRequested(args);

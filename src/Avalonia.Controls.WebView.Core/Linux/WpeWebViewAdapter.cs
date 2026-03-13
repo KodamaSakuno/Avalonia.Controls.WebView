@@ -248,9 +248,6 @@ internal sealed unsafe class WpeWebViewAdapter
         var settings = WpeInterop.webkit_web_view_get_settings(_webView);
         if (args.EnableDevTools)
             WpeInterop.webkit_settings_set_enable_developer_extras(settings, true);
-        if (args.UserAgent != null)
-            WpeInterop.webkit_settings_set_user_agent(settings, args.UserAgent);
-
         // 10. Get cookie manager
         _cookieManager = WpeInterop.webkit_network_session_get_cookie_manager(_networkSession);
 
