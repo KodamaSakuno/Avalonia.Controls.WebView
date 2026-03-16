@@ -2,6 +2,7 @@
 
 - Compatibility with Avalonia 12.0, while keeping 11.1 support
 - Dropped .NET Standard and .NET Framework support
+- NativeWebView now supports Linux with WpeWebView backend
 - NativeWebView and NativeWebDialog now support Browser backend, but with sandboxing limitations
 - NativeWebView and NativeWebDialog now have UserAgent property
 
