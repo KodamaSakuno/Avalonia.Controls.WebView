@@ -91,8 +91,12 @@ internal static unsafe class WpeGLibIntegration
         }
 
         s_pollReady.Set();
-        s_pollThread?.Join(TimeSpan.FromSeconds(2));
-        s_pollThread = null;
+
+        if (s_pollThread != null)
+        {
+            s_pollThread.Join();
+            s_pollThread = null;
+        }
 
         if (s_shutdownFd >= 0)
         {

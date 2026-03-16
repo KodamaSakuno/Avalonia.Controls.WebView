@@ -23,8 +23,10 @@ public sealed class LinuxWpeWebViewEnvironmentRequestedEventArgs : WebViewEnviro
 
     /// <summary>
     /// Gets or sets the rendering mode for WPE WebKit.
-    /// The default (<see cref="WpeRenderingMode.Auto"/>) tries SHM first (no GPU required),
-    /// then falls back to EGL/DMABuf.
+    /// The default (<see cref="WpeRenderingMode.Auto"/>) currently uses SHM only (no GPU required)
+    /// with the WPE adapter.
+    /// Modes that rely on EGL/DMABuf are not supported by the current WPE adapter implementation
+    /// and will result in an error if selected.
     /// Note: this choice is process-global and affects all WebView instances.
     /// </summary>
     public WpeRenderingMode RenderingMode { get; set; } = WpeRenderingMode.Auto;
