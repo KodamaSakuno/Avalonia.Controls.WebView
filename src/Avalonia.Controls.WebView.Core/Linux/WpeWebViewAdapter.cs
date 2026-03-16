@@ -24,6 +24,10 @@ internal sealed unsafe class WpeWebViewAdapter
       ILinuxWpePlatformHandle
 {
     private static readonly Lazy<bool> s_isAvailable = new(CheckAvailability);
+    private static readonly Lazy<IntPtr> s_fdoDestroyFn = new(() =>
+        NativeLibrary.GetExport(
+            NativeLibrary.Load("libWPEBackend-fdo-1.0.so.1"),
+            "wpe_view_backend_exportable_fdo_destroy"));
 
     private IntPtr _webView;
     private IntPtr _exportable;
@@ -97,9 +101,24 @@ internal sealed unsafe class WpeWebViewAdapter
             return false;
         }
 
-        return NativeLibrary.TryLoad("libWPEWebKit-2.0.so", out _)
-            && NativeLibrary.TryLoad("libWPEBackend-fdo-1.0.so", out _)
-            && NativeLibrary.TryLoad("libwpe-1.0.so", out _);
+        if (!NativeLibrary.TryLoad("libWPEWebKit-2.0.so", out var webkitHandle))
+            return false;
+        if (!NativeLibrary.TryLoad("libWPEBackend-fdo-1.0.so", out var fdoHandle))
+        {
+            NativeLibrary.Free(webkitHandle);
+            return false;
+        }
+        if (!NativeLibrary.TryLoad("libwpe-1.0.so", out var wpeHandle))
+        {
+            NativeLibrary.Free(fdoHandle);
+            NativeLibrary.Free(webkitHandle);
+            return false;
+        }
+
+        NativeLibrary.Free(wpeHandle);
+        NativeLibrary.Free(fdoHandle);
+        NativeLibrary.Free(webkitHandle);
+        return true;
     }
 
     public static Task<WebViewAdapter.OffscreenWebViewAdapterBuilder> CreateBuilder(
@@ -212,10 +231,7 @@ internal sealed unsafe class WpeWebViewAdapter
         // This tells WebKit to destroy the exportable (which owns the view backend)
         // when the web view is destroyed, instead of directly freeing the view backend
         // (which would cause a double-free when we also destroy the exportable).
-        var fdoDestroyFn = NativeLibrary.GetExport(
-            NativeLibrary.Load("libWPEBackend-fdo-1.0.so.1"),
-            "wpe_view_backend_exportable_fdo_destroy");
-        var wkBackend = WpeInterop.webkit_web_view_backend_new(_viewBackend, fdoDestroyFn, _exportable);
+        var wkBackend = WpeInterop.webkit_web_view_backend_new(_viewBackend, s_fdoDestroyFn.Value, _exportable);
         _exportableOwnedByWebKit = true;
         if (wkBackend == IntPtr.Zero)
             throw new InvalidOperationException("webkit_web_view_backend_new failed.");
