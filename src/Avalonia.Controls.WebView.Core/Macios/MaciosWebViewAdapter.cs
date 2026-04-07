@@ -57,8 +57,9 @@ internal class MaciosWebViewAdapter : IWebViewAdapterWithFocus, IWebViewAdapterW
         _config.WebsiteDataStore = (options.NonPersistentDataStore, options.DataStoreIdentifier) switch
         {
             (true, _) => WKWebsiteDataStore.NonPersistent,
-            (_, { Length: > 0 } id)
-                when OperatingSystem.IsIOSVersionAtLeast(17, 0) || OperatingSystem.IsMacOSVersionAtLeast(14, 0)
+            var (_, id)
+                when id != Guid.Empty && (OperatingSystem.IsIOSVersionAtLeast(17, 0) ||
+                                          OperatingSystem.IsMacOSVersionAtLeast(14, 0))
                 => WKWebsiteDataStore.ForIdentifier(id),
             _ => WKWebsiteDataStore.Default,
         };

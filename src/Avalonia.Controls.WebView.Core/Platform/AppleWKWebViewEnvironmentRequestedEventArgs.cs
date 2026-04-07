@@ -1,4 +1,5 @@
-﻿using Avalonia.Controls;
+﻿using System;
+using Avalonia.Controls;
 
 // ReSharper disable InconsistentNaming
 // ReSharper disable once CheckNamespace
@@ -18,7 +19,7 @@ public sealed class AppleWKWebViewEnvironmentRequestedEventArgs : WebViewEnviron
     /// <summary>
     /// Gets or sets the unique identifier for a persistent data store object.
     /// </summary>
-    public string? DataStoreIdentifier { get; set; }
+    public Guid DataStoreIdentifier { get; set; }
 
     /// <summary>
     /// Gets or sets the application name that appears in the user agent string.
