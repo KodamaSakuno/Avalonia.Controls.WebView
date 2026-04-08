@@ -16,9 +16,9 @@ internal class WKWebsiteDataStore(IntPtr handle, bool owns) : NSObject(handle, o
         new(Libobjc.intptr_objc_msgSend(s_class, s_defaultDataStore), false);
     public static WKWebsiteDataStore NonPersistent =>
         new(Libobjc.intptr_objc_msgSend(s_class, s_nonPersistentDataStore), false);
-    public static WKWebsiteDataStore ForIdentifier(string identifier)
+    public static WKWebsiteDataStore ForIdentifier(Guid identifier)
     {
-        using var nsIdentifier = NSString.Create(identifier);
+        using var nsIdentifier = NSUUID.Create(identifier);
         return new WKWebsiteDataStore(
             Libobjc.intptr_objc_msgSend(s_class, s_dataStoreForIdentifier, nsIdentifier.Handle), true);
     }
